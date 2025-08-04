@@ -116,6 +116,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 
 // 定义文章类型
@@ -134,6 +135,9 @@ interface BlogPost {
 const props = defineProps<{
   posts: BlogPost[]
 }>()
+
+// 路由
+const router = useRouter()
 
 // 分页相关
 const currentPage = ref(1)
@@ -172,9 +176,7 @@ const formatDate = (dateString: string) => {
 
 // 打开文章详情
 const openPost = (post: BlogPost) => {
-  // 这里可以跳转到文章详情页面
-  console.log('打开文章:', post.title)
-  // 可以使用 router.push() 跳转到详情页
+  router.push(`/blog/${post.id}`)
 }
 
 // 分页操作
