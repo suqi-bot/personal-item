@@ -1,11 +1,11 @@
 <template>
     <div class="bar">
-      
+
         <div class="nav">
             <ul>
-                <li><a>首页</a></li>
-                <li><a>推荐</a></li>
-                <li><a>官网</a></li>
+                <li><router-link to="/">首页</router-link></li>
+                <li><router-link to="/blog">博客</router-link></li>
+                <li><router-link to="/about">关于</router-link></li>
                 <li><a>我的</a></li>
                 <div class="line"></div>
             </ul>
@@ -17,33 +17,40 @@ import { gsap } from 'gsap';
 import { onMounted } from 'vue';
 
 onMounted(()=>{
+    // 检查是否已经播放过动画
+    const hasPlayedAnimation = sessionStorage.getItem('titlebar-animation-played')
 
-    let tl = gsap.timeline()
+    // 只在会话期间首次加载时播放动画
+    if (!hasPlayedAnimation) {
+        sessionStorage.setItem('titlebar-animation-played', 'true')
 
-    tl.from('.bar',{
-        opacity: 0,
-        duration: 2,
-        x:-innerWidth,
-    })
+        let tl = gsap.timeline()
 
-    tl.from('.nav ul li',{
-        opacity: 0,
-        duration: 1,
-        y:100
-    },">")
+        tl.from('.bar',{
+            opacity: 0,
+            duration: 2,
+            x:-innerWidth,
+        })
 
+        tl.from('.nav ul li',{
+            opacity: 0,
+            duration: 1,
+            y:100
+        },">")
+    }
 })
 
 </script>
 <style scoped>
     .bar{
-        height: 8%;
-        width: 100vw;
+        height: 60px;
+        width: 100%;
         position: relative;
         display: flex;
         font-size: 18px;
         z-index: 10; /* 确保导航栏在3D模型之上 */
         border-bottom: 1px solid #121212;
+        box-sizing: border-box;
     }
 
     .nav{
@@ -53,7 +60,7 @@ onMounted(()=>{
         height: 100%;
         width: 30%;
         min-width: 200px;
-        
+
     }
    
     .nav ul{
@@ -72,14 +79,25 @@ onMounted(()=>{
        
     }
 
-    .nav ul li a{
+    .nav ul li a,
+    .nav ul li .router-link-active,
+    .nav ul li .router-link-exact-active {
         color: rgb(70, 100, 100);
         font: 100 20px 'Microsoft YaHei';
         display: block;
         width: 100%;
         height: 100%;
-        line-height: 50px;
+        line-height: 60px;
         color: #121212;
+        text-decoration: none;
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav ul li .router-link-active,
+    .nav ul li .router-link-exact-active {
+        color: #4f46e5;
+        font-weight: 600;
     }
 
     .nav ul .line{

@@ -24,7 +24,7 @@ function init() {
 function LoadModel() {
     const loader = new GLTFLoader();
     loader.load(
-        '/model/people/scene.gltf', 
+        '/personal-view/model/people/scene.gltf', 
         function (gltf) {
             modelGroup = gltf.scene;
             console.log('模型加载成功:', gltf);

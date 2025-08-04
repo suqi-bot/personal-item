@@ -5,6 +5,7 @@
 </template>
 <script setup lang="ts">
 import { ref, defineExpose } from 'vue';
+import gsap from 'gsap';
 
 const visible = ref(true);
 const isOut = ref(false);
@@ -16,17 +17,15 @@ function loadingIn() {
 
 function loadingOut() {
   isOut.value = true;
-  gsap.from('.loading',{
-        opacity: 0,
-        duration: 1,
-        y:-innerHeight,
-    })
-  setTimeout(() => {
+  gsap.to('.loading', {
+    opacity: 0,
+    duration: 1,
+    y: -window.innerHeight,
     onComplete: () => {
-            visible.value = false;
-            isOut.value = false;
-        }
-  }, 2000); // 动画时长
+      visible.value = false;
+      isOut.value = false;
+    }
+  })
 }
 
 defineExpose({ loadingIn, loadingOut });
