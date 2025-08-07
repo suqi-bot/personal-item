@@ -29,107 +29,97 @@ import Titlebar from '@/components/layout/Titlebar.vue'
 import SearchBar from '@/components/blog/SearchBar.vue'
 import BlogContent from '@/components/blog/BlogContent.vue'
 import PersonalInfo from '@/components/blog/PersonalInfo.vue'
+import SupabaseService from '@/services/supabaseService'
 
-// 博客文章数据类型
-interface BlogPost {
+// Supabase articles表类型
+interface Article {
   id: number
   title: string
-  excerpt: string
   content: string
-  author: string
-  date: string
-  tags: string[]
-  readTime: number
+  excerpt: string
+  author_id: string
+  created_at: string
+  updated_at: string
+  published: boolean
+  read_time: number
+  likes_count: number
 }
 
 // 搜索关键词
 const searchKeyword = ref('')
 
-// 模拟博客文章数据
-const blogPosts = ref<BlogPost[]>([
-  {
-    id: 1,
-    title: 'Vue 3 Composition API 深度解析',
-    excerpt: '深入了解Vue 3的Composition API，掌握现代Vue开发的核心概念和最佳实践。',
-    content: '这是一篇关于Vue 3 Composition API的详细文章...',
-    author: '技术博主',
-    date: '2024-01-15',
-    tags: ['Vue', 'JavaScript', '前端'],
-    readTime: 8
-  },
-  {
-    id: 2,
-    title: 'TypeScript 进阶技巧分享',
-    excerpt: '分享一些TypeScript的高级用法和技巧，提升代码质量和开发效率。',
-    content: '这是一篇关于TypeScript进阶技巧的文章...',
-    author: '技术博主',
-    date: '2024-01-10',
-    tags: ['TypeScript', '编程技巧'],
-    readTime: 12
-  },
-  {
-    id: 3,
-    title: '现代前端工程化实践',
-    excerpt: '探讨现代前端开发中的工程化实践，包括构建工具、代码规范、自动化部署等。',
-    content: '这是一篇关于前端工程化的文章...',
-    author: '技术博主',
-    date: '2024-01-05',
-    tags: ['前端工程化', 'Vite', 'CI/CD'],
-    readTime: 15
-  },
-  {
-    id: 4,
-    title: 'CSS Grid 布局完全指南',
-    excerpt: '全面介绍CSS Grid布局系统，从基础概念到高级应用，助你掌握现代布局技术。',
-    content: '这是一篇关于CSS Grid的详细指南...',
-    author: '技术博主',
-    date: '2023-12-28',
-    tags: ['CSS', '布局', '前端'],
-    readTime: 10
-  }
-])
+// 文章数据
+const articles = ref<Article[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
 
-// 过滤后的文章列表
-const filteredPosts = computed(() => {
-  if (!searchKeyword.value) {
-    return blogPosts.value
-  }
+// 获取文章列表
+const fetchArticles = async () => {
+  loading.value = true
+  error.value = null
+  const { data, error: fetchError } = await SupabaseService.dbService.select('articles',"*")
   
-  return blogPosts.value.filter(post => 
-    post.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-    post.excerpt.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-    post.tags.some(tag => tag.toLowerCase().includes(searchKeyword.value.toLowerCase()))
-  )
-})
-
-// 处理搜索
-const handleSearch = (keyword: string) => {
-  searchKeyword.value = keyword
+  if (fetchError) {
+    error.value = fetchError.message
+  } else if (data) {
+    // 前端过滤已发布文章
+    articles.value = data.filter(a => a.published)
+  }
+  loading.value = false
 }
 
-// 页面动画
 onMounted(() => {
-  const tl = gsap.timeline()
   
+
+  fetchArticles()
+  const tl = gsap.timeline()
   tl.from('.blog-main', {
     opacity: 0,
     y: 50,
     duration: 1,
     delay: 0.5
   })
-  
   tl.from('.content-area', {
     opacity: 0,
     x: -50,
     duration: 0.8
   }, '-=0.5')
-  
   tl.from('.sidebar', {
     opacity: 0,
     x: 50,
     duration: 0.8
   }, '-=0.8')
 })
+
+// 过滤后的文章列表（适配BlogContent所需结构）
+const filteredPosts = computed(() => {
+  // 适配Article为BlogPost结构
+  const adapt = (article: Article) => ({
+    id: article.id,
+    title: article.title,
+    excerpt: article.excerpt,
+    content: article.content,
+    author: article.author_id, // 可根据author_id查用户表，这里直接用id
+    date: article.created_at,
+    tags: [], // 你可以根据实际业务扩展tags字段
+    readTime: article.read_time ?? 0
+  })
+  const list = articles.value.map(adapt)
+  if (!searchKeyword.value) {
+    return list
+  }
+  return list.filter(post =>
+    post.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
+    post.excerpt.toLowerCase().includes(searchKeyword.value.toLowerCase())
+  )
+})
+
+console.log(filteredPosts)  
+
+// 处理搜索
+const handleSearch = (keyword: string) => {
+  searchKeyword.value = keyword
+}
 </script>
 
 <style scoped>

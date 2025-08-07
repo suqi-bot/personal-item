@@ -11,6 +11,7 @@
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.53.0",
     "gsap": "^3.13.0",
     "pinia": "^3.0.1",
     "split-type": "^0.3.4",
