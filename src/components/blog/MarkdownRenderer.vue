@@ -4,98 +4,36 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-
+import MarkdownIt from 'markdown-it'
 const props = defineProps<{
   content: string
 }>()
 
-const renderedContent = computed(() => {
-  if (!props.content) return ''
-
-  let html = props.content
-
-  // 处理代码块（必须在其他处理之前）
-  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-    const language = lang || 'text'
-    return `<pre class="code-block"><code class="language-${language}">${escapeHtml(code.trim())}</code></pre>`
-  })
-
-  // 处理行内代码
-  html = html.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
-
-  // 处理标题
-  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>')
-  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>')
-  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>')
-
-  // 处理粗体和斜体
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
-
-  // 处理链接
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-
-  // 处理图片
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, src) => {
-    // 如果没有提供alt文本，使用"图片"作为默认值
-    const altText = alt.trim() || '图片'
-    return `<img src="${src}" alt="${altText}" class="markdown-image" loading="lazy">`
-  })
-
-
-
-
-  // 处理列表
-  html = html.replace(/^\* (.+)$/gim, '<li>$1</li>')
-  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-
-  // 处理段落（将连续的非HTML行包装在p标签中）
-  const lines = html.split('\n')
-  const processedLines: string[] = []
-  let inParagraph = false
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
-
-    if (line === '') {
-      if (inParagraph) {
-        processedLines.push('</p>')
-        inParagraph = false
-      }
-      continue
-    }
-
-    // 检查是否是HTML标签行
-    const isHtmlLine = /^<(h[1-6]|pre|ul|li|code)/.test(line) || /^<\/(h[1-6]|pre|ul|li|code)/.test(line)
-
-    if (isHtmlLine) {
-      if (inParagraph) {
-        processedLines.push('</p>')
-        inParagraph = false
-      }
-      processedLines.push(line)
-    } else {
-      if (!inParagraph) {
-        processedLines.push('<p>')
-        inParagraph = true
-      }
-      processedLines.push(line)
-    }
-  }
-
-  if (inParagraph) {
-    processedLines.push('</p>')
-  }
-
-  return processedLines.join('\n')
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true
 })
 
-// HTML转义函数
-function escapeHtml(text: string): string {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
+// 添加图片渲染规则
+md.renderer.rules.image = function (tokens, idx, options, env, self) {
+  const token = tokens[idx]
+  const srcIndex = token.attrIndex('src')
+  const altIndex = token.attrIndex('alt')
+  
+  if (srcIndex >= 0) {
+    token.attrs[srcIndex][1] = token.attrs[srcIndex][1].replace(/\s/g, '%20')
+  }
+  
+  return self.renderToken(tokens, idx, options)
 }
+
+
+const renderedContent = computed(() => {
+  if (!props.content) return ''
+  return md.render(props.content)
+})
+
 </script>
 
 <style scoped>
