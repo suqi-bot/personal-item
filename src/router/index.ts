@@ -26,12 +26,7 @@ const router = createRouter({
       path: '/blog/:id',
       name: 'blog-detail',
       component: () => import('../views/BlogDetailView.vue'),
-    },
-    {
-      path: '/supabase',
-      name: 'supabase',
-      component: () => import('../components/SupabaseExample.vue'),
-    },
+    }
   ],
 })
 

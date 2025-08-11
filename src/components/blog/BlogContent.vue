@@ -9,7 +9,7 @@
         <select v-model="sortBy" @change="handleSort" class="sort-select">
           <option value="date">按日期排序</option>
           <option value="title">按标题排序</option>
-          <option value="readTime">按阅读时间排序</option>
+          <option value="readTime">按阅读次数排序</option>
         </select>
         <button
           @click="toggleViewMode"
@@ -29,17 +29,18 @@
     <!-- 文章列表 -->
     <div v-if="posts.length > 0" :class="['posts-container', viewMode]">
       <article 
-        v-for="post in posts" 
-        :key="post.id"
-        class="post-card"
-        @click="openPost(post)"
-      >
+  v-for="post in sortedPosts" 
+  :key="post.id"
+  class="post-card"
+  @click="openPost(post)"
+>
+
         <div class="post-header">
           <h2 class="post-title">{{ post.title }}</h2>
           <div class="post-meta">
             <span class="author">{{ post.author }}</span>
             <span class="date">{{ formatDate(post.date) }}</span>
-            <span class="read-time">{{ post.readTime }} 分钟阅读</span>
+            <span class="read-time">{{ post.readTime }} 阅读次数</span>
           </div>
         </div>
         
@@ -221,11 +222,22 @@ const toggleViewMode = () => {
   }, 50)
 }
 
-// 处理排序
-const handleSort = () => {
-  // 这里可以添加排序逻辑
-  console.log('排序方式:', sortBy.value)
-}
+// 计算排序后的文章列表
+const sortedPosts = computed(() => {
+  const posts = [...props.posts]
+  
+  switch (sortBy.value) {
+    case 'date':
+      return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    case 'title':
+      return posts.sort((a, b) => a.title.localeCompare(b.title))
+    case 'readTime':
+      return posts.sort((a, b) => b.readTime - a.readTime)
+    default:
+      return posts
+  }
+})
+
 
 // 监听文章变化，重置页码
 watch(() => props.posts, () => {

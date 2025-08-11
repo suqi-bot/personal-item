@@ -87,7 +87,8 @@ const handleInput = () => {
 }
 
 // 搜索防抖定时器
-const searchTimeout = ref<number>()
+const searchTimeout = ref<ReturnType<typeof setTimeout>>()
+
 
 // 处理搜索
 const handleSearch = () => {

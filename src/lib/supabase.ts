@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from './database.types'
+//import type { Database } from './database.types'
 
 // 从环境变量获取配置
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mkcqbexvybospanfcawz.supabase.co'
@@ -11,7 +11,7 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 // 创建Supabase客户端
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
+export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -24,8 +24,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   }
 })
 
+
 // 导出数据库类型
-export type { Database }
+//export type { Database }
 
 // 导出客户端实例
 export default supabase 

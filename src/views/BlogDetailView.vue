@@ -26,7 +26,7 @@
               <div class="meta-left">
                 <span class="author">{{ article.author }}</span>
                 <span class="date">{{ formatDate(article.created_at) }}</span>
-                <span class="read-time">{{ article.read_time }} 分钟阅读</span>
+                <span class="read-time">{{ article.read_time }} 阅读次数</span>
               </div>
               <div class="meta-right">
                 <button @click="toggleLike" class="like-btn" :class="{ liked: isLiked }">
@@ -105,7 +105,7 @@
         <!--  <CommentSection v-if="article" :article-id="article.id" /> -->
 
         <!-- 相关文章 -->
-        <RelatedArticles v-if="article" :current-article-id="article.id" :current-tags="article.tags || []" />
+        <!-- <RelatedArticles v-if="article" :current-article-id="article.id" :current-tags="article.tags || []" /> -->
         <!-- 加载状态 -->
         <div v-else-if="loading" class="loading-state">
           <div class="loading-spinner"></div>
@@ -157,7 +157,23 @@ interface BlogPost {
   likes_count: number
   tags: string[]
   read_time: number
+  views_count: number  // 添加这一行
 }
+
+
+interface DatabaseArticle {
+  read_time: number
+  id: number
+  title: string
+  excerpt: string
+  content: string
+  author: string
+  created_at: string
+  likes_count: number | null
+  tags: string[] | null
+  views_count: number | null
+}
+
 
 const route = useRoute()
 const router = useRouter()
@@ -243,19 +259,20 @@ const fetchArticle = async () => {
 
     if (data && data.length > 0) {
       // 规范化数据，确保所有必需字段都有默认值
+      const articleData = data[0] as unknown as DatabaseArticle;
       article.value = {
-        ...data[0],
-        tags: data[0].tags || [], // 确保 tags 始终是数组
-        likes_count: data[0].likes_count || 0,
-        views_count: data[0].views_count || 0
+        ...articleData,
+        tags: articleData.tags || [],
+        likes_count: articleData.likes_count || 0,
+        views_count: articleData.views_count || 0,
+        read_time: articleData.read_time || 0  // 添加这一行
       }
+
       likeCount.value = article.value.likes_count
 
-      await dbService.update('articles',
-        { views_count: article.value.views_count + 1 },
-        'id',
-        articleId
-      )
+      await dbService.update('articles', {
+        read_time: (articleData.read_time || 0) + 1
+      }, 'id', articleId)
     } else {
       article.value = null
     }

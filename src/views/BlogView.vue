@@ -61,12 +61,13 @@ const fetchArticles = async () => {
   
   if (fetchError) {
     error.value = fetchError.message
-  } else if (data) {
-    // 前端过滤已发布文章
-    articles.value = data.filter(a => a.published)
+  } else if (data && Array.isArray(data)) {
+    // 添加类型检查，确保data是数组类型
+    articles.value = (data as unknown as Article[]).filter(a => a.published)
   }
   loading.value = false
 }
+
 
 onMounted(() => {
   
