@@ -44,7 +44,7 @@
           </div>
         </div>
         
-        <div class="post-excerpt">
+        <div class="post-excerpt" >
           {{ post.excerpt }}
         </div>
         
@@ -375,6 +375,7 @@ watch(currentPage, () => {
   flex-direction: column;
   gap: 24px;
   margin-bottom: 50px;
+  
 }
 
 @media (min-width: 1200px) {
@@ -398,7 +399,8 @@ watch(currentPage, () => {
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  height: 100%;
+  height: 40vh;
+  
   display: flex;
   flex-direction: column;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -445,13 +447,15 @@ watch(currentPage, () => {
   margin-bottom: 8px;
 }
 
-.posts-container.list .post-excerpt {
-  font-size: 14px;
-  margin-bottom: 12px;
+.post-excerpt {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  margin: 12px 0;
+  color: #6b7280;
+  line-height: 1.6;
+  font-size: 15px;
 }
 
 .posts-container.list .post-footer {

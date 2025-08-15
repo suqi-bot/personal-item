@@ -291,7 +291,7 @@ const fetchArticle = async () => {
 onMounted(async () => {
   await fetchArticle()
 
-  // 页面加载动画
+  /* // 页面加载动画
   if (article.value) {
     gsap.timeline()
       .from('.back-navigation', {
@@ -314,7 +314,7 @@ onMounted(async () => {
         x: 50,
         duration: 0.6
       }, '-=0.6')
-  }
+  } */
 })
 
 onBeforeUnmount(() => {
@@ -492,6 +492,7 @@ onBeforeUnmount(() => {
 
 .article-content {
   line-height: 1.8;
+  max-width: 40vw;
   color: #374151;
   font-size: 16px;
 }
