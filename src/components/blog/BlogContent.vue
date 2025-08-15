@@ -222,6 +222,12 @@ const toggleViewMode = () => {
   }, 50)
 }
 
+// 处理排序
+const handleSort = () => {
+  // 排序逻辑已通过计算属性 sortedPosts 实现
+}
+
+
 // 计算排序后的文章列表
 const sortedPosts = computed(() => {
   const posts = [...props.posts]
