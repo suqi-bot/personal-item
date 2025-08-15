@@ -6,6 +6,7 @@
 import { computed, onMounted } from 'vue'
 import MarkdownIt from 'markdown-it'
 import markdownItHighlightjs from 'markdown-it-highlightjs'
+import { copyToClipboard } from '@/utils/clipboard'
 
 
 const props = defineProps<{
@@ -39,6 +40,8 @@ const renderedContent = computed(() => {
 })
 
 
+
+
 onMounted(() => {
   // 添加复制按钮点击事件
   document.querySelectorAll('.markdown-content pre').forEach(pre => {
@@ -52,23 +55,27 @@ onMounted(() => {
     button.addEventListener('click', async () => {
       const code = pre.querySelector('code')?.innerText
       if (code) {
-        try {
-          await navigator.clipboard.writeText(code)
-          button.innerHTML = `
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-            </svg>
-          `
-          setTimeout(() => {
+        const success = await copyToClipboard(
+          code,
+          () => {
+            // 显示成功状态
             button.innerHTML = `
               <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm-1 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7l-2-2zm0 16H8V7h8v12z"/>
+                <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
               </svg>
             `
-          }, 2000)
-        } catch (err) {
-          console.error('Failed to copy text: ', err)
-        }
+            setTimeout(() => {
+              button.innerHTML = `
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm-1 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7l-2-2zm0 16H8V7h8v12z"/>
+                </svg>
+              `
+            }, 2000)
+          },
+          (error) => {
+            console.error('Failed to copy text: ', error)
+          }
+        )
       }
     })
     pre.appendChild(button)

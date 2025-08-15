@@ -145,6 +145,7 @@ import MarkdownRenderer from '@/components/blog/MarkdownRenderer.vue'
 import CommentSection from '@/components/blog/CommentSection.vue'
 import RelatedArticles from '@/components/blog/RelatedArticles.vue'
 import { dbService } from '@/services/supabaseService'
+import { copyToClipboard, isShareSupported } from '@/utils/clipboard'
 
 // 文章类型定义
 interface BlogPost {
@@ -222,17 +223,38 @@ const toggleLike = async () => {
 }
 
 
-const shareArticle = () => {
-  if (navigator.share && article.value) {
-    navigator.share({
-      title: article.value.title,
-      text: article.value.excerpt,
-      url: window.location.href
-    })
+const shareArticle = async () => {
+  if (isShareSupported() && article.value) {
+    try {
+      await navigator.share({
+        title: article.value.title,
+        text: article.value.excerpt,
+        url: window.location.href
+      })
+    } catch (error) {
+      console.log('分享被取消或失败:', error)
+      // 分享失败时降级到复制链接
+      await copyArticleLink()
+    }
   } else {
     // 降级方案：复制链接到剪贴板
-    navigator.clipboard.writeText(window.location.href)
-    alert('文章链接已复制到剪贴板')
+    await copyArticleLink()
+  }
+}
+
+// 复制文章链接
+const copyArticleLink = async () => {
+  const success = await copyToClipboard(
+    window.location.href,
+    () => alert('文章链接已复制到剪贴板'),
+    (error) => {
+      console.error('复制失败:', error)
+      alert('复制失败，请手动复制链接：' + window.location.href)
+    }
+  )
+  
+  if (!success) {
+    alert('复制失败，请手动复制链接：' + window.location.href)
   }
 }
 
