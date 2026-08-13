@@ -1,5 +1,13 @@
 <template>
   <div class="blog-detail-container">
+    <!-- 动态背景 -->
+    <BlogBackground />
+
+    <!-- 阅读进度条 -->
+    <div class="reading-progress">
+      <div class="progress-bar" :style="{ width: progress + '%' }"></div>
+    </div>
+
     <!-- 标题栏 -->
     <Titlebar />
 
@@ -132,6 +140,11 @@
         <PersonalInfo />
       </div>
     </div>
+
+    <!-- 复制提示 -->
+    <transition name="toast">
+      <div v-if="showToast" class="toast">文章链接已复制到剪贴板</div>
+    </transition>
   </div>
 </template>
 
@@ -140,6 +153,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import Titlebar from '@/components/layout/Titlebar.vue'
+import BlogBackground from '@/components/modules/BlogBackground.vue'
 import PersonalInfo from '@/components/blog/PersonalInfo.vue'
 import MarkdownRenderer from '@/components/blog/MarkdownRenderer.vue'
 import CommentSection from '@/components/blog/CommentSection.vue'
@@ -183,6 +197,11 @@ const article = ref<BlogPost | null>(null)
 const loading = ref(true)
 const isLiked = ref(false)
 const likeCount = ref(0)
+// 阅读进度
+const progress = ref(0)
+// 复制提示
+const showToast = ref(false)
+let toastTimer: number | undefined
 
 
 // 方法
@@ -215,6 +234,9 @@ const toggleLike = async () => {
 
     isLiked.value = !isLiked.value
     likeCount.value = newLikeCount
+
+    // 点赞/取消的微动效
+    gsap.fromTo('.like-btn', { scale: 0.9 }, { scale: 1, duration: 0.3, ease: 'back.out(3)' })
   } catch (error) {
     console.error('更新点赞数量失败:', error)
     // 可以在这里添加错误提示
@@ -231,8 +253,13 @@ const shareArticle = () => {
     })
   } else {
     // 降级方案：复制链接到剪贴板
-    navigator.clipboard.writeText(window.location.href)
-    alert('文章链接已复制到剪贴板')
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      showToast.value = true
+      clearTimeout(toastTimer)
+      toastTimer = window.setTimeout(() => {
+        showToast.value = false
+      }, 2000)
+    })
   }
 }
 
@@ -287,39 +314,60 @@ const fetchArticle = async () => {
 
 
 
+// 更新阅读进度
+const updateProgress = () => {
+  const container = document.querySelector<HTMLElement>('.blog-detail-container')
+  if (!container) return
+  const max = container.scrollHeight - container.clientHeight
+  progress.value = max > 0 ? (container.scrollTop / max) * 100 : 0
+}
+
+// 页面入场动画（数据加载完成后播放）
+const playEnterAnimation = () => {
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+  tl.from('.back-navigation', {
+    opacity: 0,
+    y: -20,
+    duration: 0.6
+  })
+  tl.from('.article-header', {
+    opacity: 0,
+    y: 30,
+    duration: 0.8
+  }, '-=0.3')
+  tl.from('.article-content', {
+    opacity: 0,
+    y: 20,
+    duration: 0.6
+  }, '-=0.4')
+  tl.from('.article-footer', {
+    opacity: 0,
+    y: 20,
+    duration: 0.6
+  }, '-=0.3')
+  tl.from('.sidebar', {
+    opacity: 0,
+    x: 50,
+    duration: 0.6
+  }, '-=0.6')
+}
+
 // 生命周期
 onMounted(async () => {
   await fetchArticle()
+  playEnterAnimation()
 
-  /* // 页面加载动画
-  if (article.value) {
-    gsap.timeline()
-      .from('.back-navigation', {
-        opacity: 0,
-        y: -20,
-        duration: 0.6
-      })
-      .from('.article-header', {
-        opacity: 0,
-        y: 30,
-        duration: 0.8
-      }, '-=0.3')
-      .from('.article-content', {
-        opacity: 0,
-        y: 20,
-        duration: 0.6
-      }, '-=0.4')
-      .from('.sidebar', {
-        opacity: 0,
-        x: 50,
-        duration: 0.6
-      }, '-=0.6')
-  } */
+  const container = document.querySelector<HTMLElement>('.blog-detail-container')
+  container?.addEventListener('scroll', updateProgress, { passive: true })
+  updateProgress()
 })
 
 onBeforeUnmount(() => {
   // 清理可能存在的异步操作或订阅
   article.value = null
+  clearTimeout(toastTimer)
+  document.querySelector<HTMLElement>('.blog-detail-container')
+    ?.removeEventListener('scroll', updateProgress)
 })
 
 </script>
@@ -343,6 +391,26 @@ onBeforeUnmount(() => {
   display: none;
 }
 
+/* 阅读进度条 */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  z-index: 100;
+  background: transparent;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #111827, #4b5563, #6b7280);
+  border-radius: 0 3px 3px 0;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px rgba(17, 24, 39, 0.5);
+}
+
 .blog-detail-main {
   display: flex;
   width: 100%;
@@ -351,6 +419,8 @@ onBeforeUnmount(() => {
   padding: 20px;
   gap: 30px;
   min-height: calc(100vh - 140px);
+  position: relative;
+  z-index: 1;
 }
 
 .back-navigation {
@@ -375,8 +445,8 @@ onBeforeUnmount(() => {
 
 .back-btn:hover {
   background: #f9fafb;
-  border-color: #4f46e5;
-  color: #4f46e5;
+  border-color: #111827;
+  color: #111827;
   transform: translateX(-2px);
 }
 
@@ -397,12 +467,37 @@ onBeforeUnmount(() => {
   padding: 40px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   margin-bottom: 30px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 顶部渐变装饰条 */
+.article-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #111827, #4b5563, #6b7280);
 }
 
 .article-header {
-  border-bottom: 1px solid #e5e7eb;
   padding-bottom: 30px;
   margin-bottom: 40px;
+  position: relative;
+}
+
+/* 渐变分隔线 */
+.article-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 120px;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #111827, #4b5563);
 }
 
 .article-title {
@@ -486,7 +581,7 @@ onBeforeUnmount(() => {
 }
 
 .tag:hover {
-  background: #4f46e5;
+  background: #111827;
   color: white;
 }
 
@@ -506,24 +601,24 @@ onBeforeUnmount(() => {
 }
 
 .article-content a {
-  color: #4f46e5;
+  color: #111827;
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
 .article-content a:hover {
-  color: #4338ca;
+  color: #111827;
   text-decoration: underline;
 }
 
 .article-content a {
-  color: #4f46e5;
+  color: #111827;
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
 .article-content a:hover {
-  color: #4338ca;
+  color: #111827;
   text-decoration: underline;
 }
 
@@ -624,15 +719,15 @@ onBeforeUnmount(() => {
 }
 
 .action-btn:hover {
-  border-color: #4f46e5;
-  color: #4f46e5;
+  border-color: #111827;
+  color: #111827;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.15);
 }
 
 .action-btn.active {
-  background: #4f46e5;
-  border-color: #4f46e5;
+  background: #111827;
+  border-color: #111827;
   color: white;
 }
 
@@ -653,7 +748,7 @@ onBeforeUnmount(() => {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f4f6;
-  border-top: 4px solid #4f46e5;
+  border-top: 4px solid #111827;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 20px;
@@ -687,7 +782,7 @@ onBeforeUnmount(() => {
 }
 
 .error-back-btn {
-  background: #4f46e5;
+  background: #111827;
   color: white;
   border: none;
   border-radius: 8px;
@@ -698,7 +793,7 @@ onBeforeUnmount(() => {
 }
 
 .error-back-btn:hover {
-  background: #4338ca;
+  background: #111827;
   transform: translateY(-1px);
 }
 
@@ -720,6 +815,12 @@ onBeforeUnmount(() => {
 
   .article-title {
     font-size: 28px;
+  }
+
+  /* 移动端正文全宽展示，避免 40vw 压缩 */
+  .article-content {
+    max-width: 100%;
+    font-size: 15px;
   }
 
   .article-meta {

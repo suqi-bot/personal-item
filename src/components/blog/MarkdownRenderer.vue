@@ -155,7 +155,7 @@ onMounted(() => {
 
 .markdown-content :deep(.hljs-function),
 .markdown-content :deep(.hljs-class) {
-  color: #4F46E5;
+  color: #111827;
 }
 
 .markdown-content :deep(.hljs-variable),
@@ -165,6 +165,93 @@ onMounted(() => {
 
 .markdown-content :deep(.hljs-attribute) {
   color: #98C379;
+}
+
+/* 行内代码 */
+.markdown-content :deep(code:not(pre code)) {
+  background: #f3f4f6;
+  color: #be123c;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+  word-break: break-all;
+}
+
+/* 标题 */
+.markdown-content :deep(h1) {
+  font-size: 28px;
+  margin: 28px 0 16px;
+  color: #111827;
+}
+
+.markdown-content :deep(h2) {
+  font-size: 24px;
+  margin: 24px 0 14px;
+  color: #111827;
+}
+
+.markdown-content :deep(h3) {
+  font-size: 20px;
+  margin: 20px 0 12px;
+  color: #111827;
+}
+
+.markdown-content :deep(h4) {
+  font-size: 17px;
+  margin: 16px 0 10px;
+  color: #111827;
+}
+
+.markdown-content :deep(p) {
+  margin-bottom: 16px;
+}
+
+.markdown-content :deep(ul),
+.markdown-content :deep(ol) {
+  padding-left: 24px;
+  margin-bottom: 16px;
+}
+
+.markdown-content :deep(blockquote) {
+  border-left: 4px solid #9ca3af;
+  background: #f9fafb;
+  margin: 16px 0;
+  padding: 12px 16px;
+  color: #4b5563;
+  border-radius: 0 8px 8px 0;
+}
+
+/* 表格：窄屏可横向滚动 */
+.markdown-content :deep(table) {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 16px 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.markdown-content :deep(th),
+.markdown-content :deep(td) {
+  border: 1px solid #e5e7eb;
+  padding: 8px 14px;
+  font-size: 14px;
+  text-align: left;
+}
+
+.markdown-content :deep(th) {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #111827;
+}
+
+.markdown-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 16px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* 响应式设计 */
@@ -178,6 +265,24 @@ onMounted(() => {
     padding: 16px;
     font-size: 13px;
     border-radius: 4px;
+  }
+
+  .markdown-content :deep(h1) {
+    font-size: 23px;
+  }
+
+  .markdown-content :deep(h2) {
+    font-size: 20px;
+  }
+
+  .markdown-content :deep(h3) {
+    font-size: 17px;
+  }
+
+  .markdown-content :deep(th),
+  .markdown-content :deep(td) {
+    padding: 6px 10px;
+    font-size: 13px;
   }
 }
 </style>

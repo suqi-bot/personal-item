@@ -1,5 +1,8 @@
 <template>
   <div class="home-container">
+    <!-- 动态背景（置于 3D 建模之后） -->
+    <BlogBackground :z-index="-2" />
+
     <!-- 背景模块 -->
     <BackgroundModule 
       :config="backgroundConfig"
@@ -30,6 +33,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import gsap from 'gsap'
+import BlogBackground from '@/components/modules/BlogBackground.vue'
 import BackgroundModule from '@/components/modules/BackgroundModule.vue'
 import LayoutModule from '@/components/modules/LayoutModule.vue'
 import HeroSection from '@/components/modules/HeroSection.vue'
@@ -38,9 +42,12 @@ import HeroSection from '@/components/modules/HeroSection.vue'
 const heroSectionRef = ref<InstanceType<typeof HeroSection>>()
 
 // 模块配置
+const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
+
 const backgroundConfig = ref({
-  blur: 3,
-  opacity: 1,
+  // 移动端降低滤镜开销，保证 3D 背景流畅
+  blur: isMobile ? 0.5 : 3,
+  opacity: isMobile ? 0.9 : 1,
   zIndex: -1
 })
 
@@ -188,11 +195,16 @@ onMounted(async () => {
   .content-container {
     height: calc(100vh - 60px);
   }
+
+  .content-container {
+    padding: 0 16px;
+  }
 }
 
 @media (max-width: 480px) {
   .content-container {
     height: calc(100vh - 60px);
+    padding: 0 12px;
   }
 }
 

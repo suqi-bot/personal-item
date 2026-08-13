@@ -329,8 +329,8 @@ onMounted(async () => {
 
 .form-input:focus, .form-textarea:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
 }
 
 .form-textarea {
@@ -340,7 +340,7 @@ onMounted(async () => {
 }
 
 .submit-btn {
-  background: #4f46e5;
+  background: #111827;
   color: white;
   border: none;
   border-radius: 8px;
@@ -355,7 +355,7 @@ onMounted(async () => {
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #4338ca;
+  background: #111827;
   transform: translateY(-1px);
 }
 
@@ -413,7 +413,7 @@ onMounted(async () => {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, #111827, #4b5563);
   color: white;
   display: flex;
   align-items: center;
@@ -477,7 +477,7 @@ onMounted(async () => {
 }
 
 .action-btn.liked {
-  color: #4f46e5;
+  color: #111827;
 }
 
 @media (max-width: 768px) {

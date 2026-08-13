@@ -179,11 +179,14 @@ function createAnimationTimeline() {
 
   tl.set('.nav-box', { width: 0 })
 
+  // 导航框宽度适配视口（移动端不超出屏幕）
+  const navBoxWidth = Math.min(330, window.innerWidth * 0.82)
+
   // 先执行简单的导航框动画
   tl.to('.nav-box', {
     opacity: 1,
     duration: 1,
-    width: 330,
+    width: navBoxWidth,
     ease: ""
   }, '>=0.3')
 
@@ -286,7 +289,7 @@ onMounted(async () => {
 
 .split {
   overflow: hidden;
-  font-size: clamp(2rem, 12rem, 5vw);
+  font-size: clamp(2rem, 8vw, 12rem);
   text-align: center;
   perspective: 500px;
   color: #121212;
@@ -301,6 +304,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   opacity: 0; /* 初始隐藏 */
+  max-width: 86vw;
 }
 
 .nav-box-background {
@@ -316,5 +320,19 @@ onMounted(async () => {
   overflow: hidden;
   z-index: 2;
   opacity: 0; /* 初始隐藏 */
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .split {
+    font-size: 2.5rem;
+  }
+
+  .nav-box {
+    height: 32px;
+  }
 }
 </style>

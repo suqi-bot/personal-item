@@ -1,5 +1,5 @@
 <template>
-  <div class="personal-info">
+  <div class="personal-info" :class="{ 'entrance-hidden': !entranceStarted }">
     <!-- 个人资料卡片 -->
     <div class="profile-card">
       <div class="avatar-section">
@@ -20,15 +20,15 @@
         
         <div class="stats">
           <div class="stat-item">
-            <span class="stat-number">{{ profileData.stats.posts }}</span>
+            <span class="stat-number">{{ stats.posts }}</span>
             <span class="stat-label">文章</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">{{ profileData.stats.followers }}</span>
-            <span class="stat-label">关注者</span>
+            <span class="stat-number">{{ stats.reads }}</span>
+            <span class="stat-label">总阅读</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">{{ profileData.stats.likes }}</span>
+            <span class="stat-number">{{ stats.likes }}</span>
             <span class="stat-label">点赞</span>
           </div>
         </div>
@@ -50,13 +50,13 @@
     </div>
     
     <!-- 热门标签 -->
-    <div class="widget">
+    <div v-if="popularTags.length > 0" class="widget">
       <h4 class="widget-title">热门标签</h4>
       <div class="tag-cloud">
         <span 
           v-for="tag in popularTags" 
           :key="tag.name"
-          :class="['tag-item', `size-${tag.size}`]"
+          :class="['tag-item', `size-${tag.size}`, { active: tag.name === selectedTag }]"
           @click="searchTag(tag.name)"
         >
           {{ tag.name }}
@@ -64,35 +64,14 @@
       </div>
     </div>
     
-    <!-- 最新评论 -->
-    <!-- <div class="widget">
-      <h4 class="widget-title">最新评论</h4>
-      <div class="recent-comments">
-        <div 
-          v-for="comment in recentComments" 
-          :key="comment.id"
-          class="comment-item"
-        >
-          <div class="comment-avatar">
-            <img :src="comment.avatar" :alt="comment.author" />
-          </div>
-          <div class="comment-content">
-            <div class="comment-author">{{ comment.author }}</div>
-            <div class="comment-text">{{ comment.text }}</div>
-            <div class="comment-time">{{ formatTime(comment.time) }}</div>
-          </div>
-        </div>
-      </div>
-    </div> -->
-    
     <!-- 归档 -->
-    <div class="widget">
+    <div v-if="archiveData.length > 0" class="widget">
       <h4 class="widget-title">文章归档</h4>
       <div class="archive-list">
         <div 
           v-for="archive in archiveData" 
           :key="archive.month"
-          class="archive-item"
+          :class="['archive-item', { active: archive.month === selectedMonth }]"
           @click="filterByMonth(archive.month)"
         >
           <span class="archive-month">{{ archive.month }}</span>
@@ -104,134 +83,225 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { gsap } from 'gsap'
 import SocialIcons from '@/components/icons/SocialIcons.vue'
+import { dbService } from '@/services/supabaseService'
 
-// 个人资料数据
+// 文章类型（与 Supabase articles 表字段一致）
+interface Article {
+  id: number
+  title: string
+  content: string
+  excerpt: string
+  created_at: string
+  updated_at: string
+  published: boolean
+  read_time: number
+  likes_count: number
+}
+
+// 接收文章数据（可选：由父组件传入，否则组件自行拉取）
+const props = defineProps<{
+  articles?: Article[]
+}>()
+
+// 事件：点击标签搜索 / 点击归档月份筛选
+const emit = defineEmits<{
+  (e: 'search', keyword: string): void
+  (e: 'filter-month', month: string): void
+}>()
+
+// 自行拉取的文章数据（父组件未传时使用）
+const fetchedArticles = ref<Article[]>([])
+
+// 实际使用的文章列表
+const articlesList = computed(() => props.articles ?? fetchedArticles.value)
+
+// 个人资料（无独立数据表，使用静态配置）
 const profileData = ref({
-  name: '技术博主',
+  name: 'SuQi',
   title: '全栈开发工程师',
-  bio: '专注于前端技术分享，热爱编程与创新，致力于用技术改变世界。',
-  avatar: '/api/placeholder/120/120',
-  stats: {
-    posts: 42,
-    followers: 1234,
-    likes: 5678
-  },
+  bio: '专注后端与前端技术分享，热爱编程与游戏开发。',
+  avatar: '',
   socialLinks: [
-    { name: 'github', url: 'https://github.com' },
-    { name: 'twitter', url: 'https://twitter.com' },
-    { name: 'linkedin', url: 'https://linkedin.com' },
-    { name: 'email', url: 'mailto:contact@example.com' }
+    { name: 'github', url: 'https://github.com/suqi-bot' }
   ]
 })
 
-// 热门标签
-const popularTags = ref([
-  { name: 'Vue', size: 3 },
-  { name: 'JavaScript', size: 2 },
-  { name: 'TypeScript', size: 2 },
-  { name: 'CSS', size: 1 },
-  { name: '前端工程化', size: 2 },
-  { name: 'React', size: 1 },
-  { name: 'Node.js', size: 1 },
-  { name: 'Vite', size: 1 }
-])
+// 统计：文章数、总阅读、总点赞（从文章数据计算）
+const stats = computed(() => {
+  const likes = articlesList.value.reduce((sum, a) => sum + (a.likes_count || 0), 0)
+  const reads = articlesList.value.reduce((sum, a) => sum + (a.read_time || 0), 0)
+  return { posts: articlesList.value.length, likes, reads }
+})
 
-// 最新评论
-/* const recentComments = ref([
-  {
-    id: 1,
-    author: '小明',
-    avatar: '/api/placeholder/32/32',
-    text: '这篇文章写得很好，学到了很多！',
-    time: '2024-01-15T10:30:00Z'
-  },
-  {
-    id: 2,
-    author: '小红',
-    avatar: '/api/placeholder/32/32',
-    text: '感谢分享，代码示例很清晰。',
-    time: '2024-01-14T15:20:00Z'
-  },
-  {
-    id: 3,
-    author: '小李',
-    avatar: '/api/placeholder/32/32',
-    text: '期待更多关于Vue 3的文章！',
-    time: '2024-01-13T09:15:00Z'
-  }
-]) */
+// 从文章标题统计关键词作为热门标签
+const popularTags = computed(() => {
+  const KEYWORDS = ['C#', 'SpringBoot', 'Vuex', 'Hollow Knight', 'Java', 'Spring', 'Vue']
+  const counts = new Map<string, number>()
 
-// 归档数据
-const archiveData = ref([
-  { month: '2024年1月', count: 8 },
-  { month: '2023年12月', count: 12 },
-  { month: '2023年11月', count: 15 },
-  { month: '2023年10月', count: 10 }
-])
+  articlesList.value.forEach((article) => {
+    KEYWORDS.forEach((keyword) => {
+      if (article.title.includes(keyword)) {
+        counts.set(keyword, (counts.get(keyword) || 0) + 1)
+      }
+    })
+  })
 
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({ name, size: Math.min(3, Math.max(1, count)) }))
+})
 
+// 归档：按文章创建月份聚合
+const archiveData = computed(() => {
+  const map = new Map<string, number>()
+
+  articlesList.value.forEach((article) => {
+    const key = article.created_at.substring(0, 7)
+    map.set(key, (map.get(key) || 0) + 1)
+  })
+
+  return [...map.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([month, count]) => ({
+      month: `${Number(month.substring(0, 4))}年${Number(month.substring(5, 7))}月`,
+      key: month,
+      count
+    }))
+})
+
+// 当前选中的归档月份（高亮）
+const selectedMonth = ref('')
+// 当前选中的热门标签（高亮）
+const selectedTag = ref('')
 
 // 处理头像加载错误
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src = `data:image/svg+xml,${encodeURIComponent(`
     <svg width="120" height="120" xmlns="http://www.w3.org/2000/svg">
-      <rect width="120" height="120" fill="#f3f4f6"/>
-      <text x="60" y="60" text-anchor="middle" dy="0.3em" font-family="Arial" font-size="14" fill="#9ca3af">头像</text>
+      <rect width="120" height="120" fill="#111827" rx="60"/>
+      <text x="60" y="74" text-anchor="middle" font-family="Arial" font-size="44" font-weight="bold" fill="white">S</text>
     </svg>
   `)}`
 }
 
-// 搜索标签
+// 搜索标签（再次点击已选中标签则取消搜索，可与归档叠加）
 const searchTag = (tagName: string) => {
-  console.log('搜索标签:', tagName)
-  // 这里可以触发搜索事件
+  if (selectedTag.value === tagName) {
+    selectedTag.value = ''
+    emit('search', '')
+    return
+  }
+  selectedTag.value = tagName
+  emit('search', tagName)
 }
 
-// 按月份筛选
+// 按月份筛选（再次点击已选中月份则取消筛选，可与标签叠加）
 const filterByMonth = (month: string) => {
-  console.log('筛选月份:', month)
-  // 这里可以触发筛选事件
+  if (selectedMonth.value === month) {
+    selectedMonth.value = ''
+    emit('filter-month', '')
+    return
+  }
+  const target = archiveData.value.find((item) => item.month === month)
+  selectedMonth.value = month
+  emit('filter-month', target?.key || '')
 }
 
-// 格式化时间
-const formatTime = (timeString: string) => {
-  const time = new Date(timeString)
-  const now = new Date()
-  const diff = now.getTime() - time.getTime()
-  
-  const minutes = Math.floor(diff / (1000 * 60))
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (minutes < 60) {
-    return `${minutes}分钟前`
-  } else if (hours < 24) {
-    return `${hours}小时前`
-  } else {
-    return `${days}天前`
+// 入场控制：由父组件在外层动画完成后触发
+const entranceTriggered = ref(false)
+const widgetsAnimated = ref(false)
+// 外层动画播完前隐藏内容（保留占位布局）
+const entranceStarted = ref(false)
+
+// 个人卡片内部元素逐个入场（模糊 + 上浮柔和过渡）
+const animateProfile = () => {
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+  tl.from('.profile-card', {
+    opacity: 0, y: 24, filter: 'blur(8px)', duration: 0.5,
+    clearProps: 'transform, opacity, filter'
+  })
+  tl.from('.avatar-section', {
+    opacity: 0, scale: 0.85, y: 12, filter: 'blur(6px)', duration: 0.4
+  }, '-=0.25')
+  tl.from('.name', {
+    opacity: 0, y: 10, filter: 'blur(4px)', duration: 0.4
+  }, '-=0.3')
+  tl.from('.title', {
+    opacity: 0, y: 10, filter: 'blur(4px)', duration: 0.4
+  }, '-=0.3')
+  tl.from('.bio', {
+    opacity: 0, y: 10, filter: 'blur(4px)', duration: 0.4
+  }, '-=0.3')
+  tl.from('.stats', {
+    opacity: 0, y: 12, filter: 'blur(5px)', duration: 0.45
+  }, '-=0.3')
+  tl.from('.social-links', {
+    opacity: 0, y: 10, filter: 'blur(4px)', duration: 0.4
+  }, '-=0.25')
+}
+
+// 标签 / 归档：容器先入，内部条目逐个细碎出现
+const animateWidgets = () => {
+  if (widgetsAnimated.value) return
+  const tagItems = gsap.utils.toArray<HTMLElement>('.personal-info .tag-item')
+  const archiveItems = gsap.utils.toArray<HTMLElement>('.personal-info .archive-item')
+  if (!tagItems.length && !archiveItems.length) return
+  widgetsAnimated.value = true
+
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+  tl.from('.widget', {
+    opacity: 0, y: 16, filter: 'blur(6px)', duration: 0.4,
+    clearProps: 'transform, opacity, filter'
+  })
+  if (tagItems.length) {
+    tl.from(tagItems, {
+      opacity: 0, y: 8, scale: 0.88, filter: 'blur(3px)', duration: 0.25, stagger: 0.04
+    }, '-=0.15')
+  }
+  if (archiveItems.length) {
+    tl.from(archiveItems, {
+      opacity: 0, x: -14, filter: 'blur(3px)', duration: 0.25, stagger: 0.05
+    }, '-=0.2')
   }
 }
 
-// 组件挂载动画
-onMounted(() => {
-  const tl = gsap.timeline()
-  
-  tl.from('.profile-card', {
-    opacity: 0,
-    y: 30,
-    duration: 0.6
+// 内层入场动画：由父组件在外层动画完成后触发
+const playEntrance = () => {
+  if (entranceStarted.value) return
+  entranceTriggered.value = true
+  entranceStarted.value = true
+  nextTick(() => {
+    animateProfile()
+    animateWidgets()
   })
-  
-  tl.from('.widget', {
-    opacity: 0,
-    y: 20,
-    duration: 0.4,
-    stagger: 0.1
-  }, '-=0.3')
+}
+
+// 数据就绪后补播 widget 动画（入场已触发但数据晚到时）
+watch(() => articlesList.value.length, (length) => {
+  if (length > 0 && entranceTriggered.value) {
+    nextTick(() => animateWidgets())
+  }
+})
+
+defineExpose({ playEntrance })
+
+// 组件挂载：父组件未传文章数据时自行拉取
+onMounted(async () => {
+  if (!props.articles || props.articles.length === 0) {
+    const { data, error } = await dbService.select('articles', '*')
+    if (!error && Array.isArray(data)) {
+      fetchedArticles.value = (data as unknown as Article[]).filter((a) => a.published)
+    }
+  }
+
+  // 无父级协调时的兜底：自动显示内容（如详情页单独使用）
+  window.setTimeout(() => {
+    if (!entranceTriggered.value) playEntrance()
+  }, 1200)
 })
 </script>
 
@@ -244,6 +314,11 @@ onMounted(() => {
   padding-right: 20px;
 }
 
+/* 外层动画完成前隐藏内容（保留占位布局） */
+.personal-info.entrance-hidden {
+  visibility: hidden;
+}
+
 .profile-card {
   background: white;
   border-radius: 16px;
@@ -252,13 +327,13 @@ onMounted(() => {
   text-align: center;
   top: 20px;
   border: 1px solid #e5e7eb;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .profile-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  border-color: #4f46e5;
+  border-color: #111827;
 }
 
 .avatar-section {
@@ -366,7 +441,7 @@ onMounted(() => {
 }
 
 .social-link:hover {
-  background: #4f46e5;
+  background: #111827;
   color: white;
   transform: translateY(-2px);
 }
@@ -378,13 +453,13 @@ onMounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   top: 20px;
   border: 1px solid #e5e7eb;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .widget:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  border-color: #4f46e5;
+  border-color: #111827;
 }
 
 .widget-title {
@@ -408,7 +483,7 @@ onMounted(() => {
   padding: 6px 12px;
   border-radius: 20px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   font-weight: 500;
 }
 
@@ -417,63 +492,14 @@ onMounted(() => {
 .tag-item.size-3 { font-size: 16px; }
 
 .tag-item:hover {
-  background: #4f46e5;
+  background: #111827;
   color: white;
   transform: scale(1.05);
 }
 
-.recent-comments {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.comment-item {
-  display: flex;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #f9fafb;
-  transition: background-color 0.3s ease;
-}
-
-.comment-item:hover {
-  background: #f3f4f6;
-}
-
-.comment-avatar {
-  flex-shrink: 0;
-}
-
-.comment-avatar img {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.comment-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.comment-author {
-  font-weight: 600;
-  color: #1f2937;
-  font-size: 14px;
-  margin-bottom: 2px;
-}
-
-.comment-text {
-  color: #4b5563;
-  font-size: 13px;
-  line-height: 1.4;
-  margin-bottom: 4px;
-}
-
-.comment-time {
-  color: #9ca3af;
-  font-size: 11px;
+.tag-item.active {
+  background: #111827;
+  color: white;
 }
 
 .archive-list {
@@ -494,6 +520,15 @@ onMounted(() => {
 
 .archive-item:hover {
   background: #f3f4f6;
+}
+
+.archive-item.active {
+  background: #f3f4f6;
+}
+
+.archive-item.active .archive-month {
+  color: #111827;
+  font-weight: 600;
 }
 
 .archive-month {
