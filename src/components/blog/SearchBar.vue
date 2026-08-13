@@ -83,7 +83,7 @@ const handleInput = () => {
   clearTimeout(searchTimeout.value)
   searchTimeout.value = setTimeout(() => {
     emit('search', searchInput.value)
-  }, 300)
+  }, 150)
 }
 
 // 搜索防抖定时器

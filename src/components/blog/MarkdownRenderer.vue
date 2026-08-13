@@ -35,7 +35,12 @@ md.renderer.rules.image = function (tokens, idx, options, env, self) {
 
 const renderedContent = computed(() => {
   if (!props.content) return ''
-  return md.render(props.content)
+  let html = md.render(props.content)
+  // 默认不自动播放视频：关闭 iframe/video 的自动播放
+  html = html
+    .replace(/autoplay\s*=\s*["']?1["']?/gi, 'autoplay=0')
+    .replace(/\sautoplay(?=[\s>])/gi, '')
+  return html
 })
 
 
@@ -81,6 +86,8 @@ onMounted(() => {
   line-height: 1.8;
   color: #374151;
   font-size: 16px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* 代码块样式 */
@@ -247,11 +254,30 @@ onMounted(() => {
 }
 
 .markdown-content :deep(img) {
-  max-width: 100%;
-  height: auto;
+  max-width: 100% !important;
+  height: auto !important;
   border-radius: 8px;
   margin: 16px 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 视频 / 嵌入内容：自适应宽度，避免溢出 */
+.markdown-content :deep(iframe),
+.markdown-content :deep(video) {
+  max-width: 100% !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 16 / 9;
+  border: none;
+  border-radius: 8px;
+  margin: 16px 0;
+}
+
+/* 代码块 / 表格：约束在容器内横向滚动 */
+.markdown-content :deep(pre),
+.markdown-content :deep(table) {
+  max-width: 100% !important;
+  overflow-x: auto;
 }
 
 /* 响应式设计 */

@@ -78,9 +78,9 @@ const draw = () => {
 
   ctx.clearRect(0, 0, width, height)
 
-  // 鼠标视差偏移（极轻微）
-  const offsetX = (mouse.x - width / 2) * 0.015
-  const offsetY = (mouse.y - height / 2) * 0.015
+  // 鼠标视差偏移（微微跟随）
+  const offsetX = (mouse.x - width / 2) * 0.012
+  const offsetY = (mouse.y - height / 2) * 0.012
 
   // 微粒缓慢漂浮
   const time = performance.now() / 1000

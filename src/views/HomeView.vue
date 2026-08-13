@@ -45,8 +45,7 @@ const heroSectionRef = ref<InstanceType<typeof HeroSection>>()
 const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
 
 const backgroundConfig = ref({
-  // 移动端降低滤镜开销，保证 3D 背景流畅
-  blur: isMobile ? 0.5 : 3,
+  blur: 3,
   opacity: isMobile ? 0.9 : 1,
   zIndex: -1
 })

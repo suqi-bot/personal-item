@@ -87,6 +87,7 @@ import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { gsap } from 'gsap'
 import SocialIcons from '@/components/icons/SocialIcons.vue'
 import { dbService } from '@/services/supabaseService'
+import gitIcon from '@/assets/gitIcon.png'
 
 // 文章类型（与 Supabase articles 表字段一致）
 interface Article {
@@ -119,15 +120,27 @@ const fetchedArticles = ref<Article[]>([])
 const articlesList = computed(() => props.articles ?? fetchedArticles.value)
 
 // 个人资料（无独立数据表，使用静态配置）
+const githubAvatarUrl = 'https://github.com/suqi-bot.png'
+
 const profileData = ref({
   name: 'SuQi',
   title: '全栈开发工程师',
   bio: '专注后端与前端技术分享，热爱编程与游戏开发。',
-  avatar: '',
+  avatar: gitIcon,
   socialLinks: [
-    { name: 'github', url: 'https://github.com/suqi-bot' }
+    { name: 'github', url: 'https://github.com/suqi-bot' },
+    { name: 'bilibili', url: 'https://space.bilibili.com/186931222' }
   ]
 })
+
+// 预加载 GitHub 头像：成功则替换默认图标，失败则保持默认图标
+function loadGithubAvatar() {
+  const img = new Image()
+  img.onload = () => {
+    profileData.value.avatar = githubAvatarUrl
+  }
+  img.src = githubAvatarUrl
+}
 
 // 统计：文章数、总阅读、总点赞（从文章数据计算）
 const stats = computed(() => {
@@ -177,15 +190,10 @@ const selectedMonth = ref('')
 // 当前选中的热门标签（高亮）
 const selectedTag = ref('')
 
-// 处理头像加载错误
+// 处理头像加载错误（兜底：显示默认图标）
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
-  img.src = `data:image/svg+xml,${encodeURIComponent(`
-    <svg width="120" height="120" xmlns="http://www.w3.org/2000/svg">
-      <rect width="120" height="120" fill="#111827" rx="60"/>
-      <text x="60" y="74" text-anchor="middle" font-family="Arial" font-size="44" font-weight="bold" fill="white">S</text>
-    </svg>
-  `)}`
+  img.src = gitIcon
 }
 
 // 搜索标签（再次点击已选中标签则取消搜索，可与归档叠加）
@@ -219,29 +227,29 @@ const entranceStarted = ref(false)
 
 // 个人卡片内部元素逐个入场（模糊 + 上浮柔和过渡）
 const animateProfile = () => {
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+  const tl = gsap.timeline({ defaults: { ease: 'power3.inOut' } })
   tl.from('.profile-card', {
-    opacity: 0, y: 24, filter: 'blur(8px)', duration: 0.5,
+    opacity: 0, y: 24, filter: 'blur(8px)', duration: 0.655,
     clearProps: 'transform, opacity, filter'
   })
   tl.from('.avatar-section', {
     opacity: 0, scale: 0.85, y: 12, filter: 'blur(6px)', duration: 0.4
-  }, '-=0.25')
+  }, '-=0.18')
   tl.from('.name', {
     opacity: 0, y: 10, filter: 'blur(4px)', duration: 0.4
-  }, '-=0.3')
+  }, '-=0.22')
   tl.from('.title', {
     opacity: 0, y: 10, filter: 'blur(4px)', duration: 0.4
-  }, '-=0.3')
+  }, '-=0.22')
   tl.from('.bio', {
     opacity: 0, y: 10, filter: 'blur(4px)', duration: 0.4
-  }, '-=0.3')
+  }, '-=0.22')
   tl.from('.stats', {
-    opacity: 0, y: 12, filter: 'blur(5px)', duration: 0.45
-  }, '-=0.3')
+    opacity: 0, y: 12, filter: 'blur(5px)', duration: 0.6555
+  }, '-=0.22')
   tl.from('.social-links', {
     opacity: 0, y: 10, filter: 'blur(4px)', duration: 0.4
-  }, '-=0.25')
+  }, '-=0.18')
 }
 
 // 标签 / 归档：容器先入，内部条目逐个细碎出现
@@ -252,20 +260,20 @@ const animateWidgets = () => {
   if (!tagItems.length && !archiveItems.length) return
   widgetsAnimated.value = true
 
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+  const tl = gsap.timeline({ defaults: { ease: 'power3.inOut' } })
   tl.from('.widget', {
     opacity: 0, y: 16, filter: 'blur(6px)', duration: 0.4,
     clearProps: 'transform, opacity, filter'
   })
   if (tagItems.length) {
     tl.from(tagItems, {
-      opacity: 0, y: 8, scale: 0.88, filter: 'blur(3px)', duration: 0.25, stagger: 0.04
-    }, '-=0.15')
+      opacity: 0, y: 8, scale: 0.88, filter: 'blur(3px)', duration: 0.3, stagger: 0.03
+    }, '-=0.12')
   }
   if (archiveItems.length) {
     tl.from(archiveItems, {
-      opacity: 0, x: -14, filter: 'blur(3px)', duration: 0.25, stagger: 0.05
-    }, '-=0.2')
+      opacity: 0, x: -14, filter: 'blur(3px)', duration: 0.3, stagger: 0.04
+    }, '-=0.15')
   }
 }
 
@@ -291,6 +299,8 @@ defineExpose({ playEntrance })
 
 // 组件挂载：父组件未传文章数据时自行拉取
 onMounted(async () => {
+  loadGithubAvatar()
+
   if (!props.articles || props.articles.length === 0) {
     const { data, error } = await dbService.select('articles', '*')
     if (!error && Array.isArray(data)) {

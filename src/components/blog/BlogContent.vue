@@ -261,6 +261,8 @@ const entranceTriggered = ref(false)
 const toolbarAnimated = ref(false)
 // 外层动画完成前隐藏内容（保留占位布局）
 const entranceStarted = ref(false)
+// 首次完整入场已播放的标志（避免与后续 posts 变化动画叠加）
+const entrancePlayedOnce = ref(false)
 
 // 工具栏入场动画（仅首次）
 const playToolbar = () => {
@@ -272,21 +274,26 @@ const playToolbar = () => {
     {
       opacity: 1,
       y: 0,
-      duration: 0.5,
-      ease: 'power3.out',
+      duration: 0.655,
+      ease: 'power3.inOut',
       clearProps: 'transform, opacity'
     }
   )
 }
 
-// 内层入场：工具栏 + 文章卡片
+// 内层入场：工具栏 + 文章卡片（或空状态）
 const playEntrance = () => {
   if (entranceStarted.value) return
   entranceTriggered.value = true
   entranceStarted.value = true
+  entrancePlayedOnce.value = true
   nextTick(() => {
     playToolbar()
     animatePosts(0, 30)
+    const empty = document.querySelector('.empty-state')
+    if (empty) {
+      gsap.from(empty, { opacity: 0, y: 20, duration: 0.4, ease: 'power3.inOut' })
+    }
   })
 }
 
@@ -299,8 +306,8 @@ onMounted(() => {
   }, 1200)
 })
 
-// 文章卡片动画
-const animatePosts = (fromX = 0, fromY = 30) => {
+// 文章卡片动画（light：搜索/筛选变化时的轻快模式）
+const animatePosts = (fromX = 0, fromY = 30, light = false) => {
   const cards = gsap.utils.toArray<HTMLElement>('.post-card')
   if (!cards.length) return
 
@@ -312,15 +319,15 @@ const animatePosts = (fromX = 0, fromY = 30) => {
   gsap.killTweensOf(cards)
   gsap.fromTo(
     cards,
-    { opacity: 0, x: fromX, y: fromY, scale: 0.96, willChange: 'transform, opacity' },
+    { opacity: light ? 0.4 : 0, x: fromX, y: fromY, scale: 0.98, willChange: 'transform, opacity' },
     {
       opacity: 1,
       x: 0,
       y: 0,
       scale: 1,
-      duration: 0.55,
-      stagger: 0.07,
-      ease: 'power3.out',
+      duration: light ? 0.25 : 0.4,
+      stagger: light ? 0.03 : 0.05,
+      ease: 'power3.inOut',
       overwrite: 'auto',
       clearProps: 'transform, opacity, willChange'
     }
@@ -334,7 +341,7 @@ const onCardEnter = (event: MouseEvent) => {
     y: -4,
     scale: 1.02,
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-    duration: 0.3,
+    duration: 0.4,
     ease: 'power2.out',
     overwrite: 'auto'
   })
@@ -346,7 +353,7 @@ const onCardLeave = (event: MouseEvent) => {
     y: 0,
     scale: 1,
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-    duration: 0.3,
+    duration: 0.4,
     ease: 'power2.out',
     overwrite: 'auto'
   })
@@ -381,16 +388,15 @@ watch(sortBy, () => {
   }
 })
 
-// 监听文章变化，重置页码；入场被触发且数据加载完成后播放入场动画
+// 监听文章变化，重置页码；入场完成后搜索/筛选变化播放轻快动画
 watch(() => props.posts, (posts) => {
   if (currentPage.value !== 1) {
     currentPage.value = 1
     return
   }
-  if (posts.length > 0 && entranceTriggered.value) {
+  if (posts.length > 0 && entranceTriggered.value && entrancePlayedOnce.value) {
     nextTick(() => {
-      playToolbar()
-      animatePosts(0, 30)
+      animatePosts(0, 12, true)
     })
   }
 })

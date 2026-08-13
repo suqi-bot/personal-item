@@ -20,7 +20,7 @@
             <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
               stroke-linejoin="round" />
           </svg>
-          返回博客列表
+          返回博客
         </button>
       </div>
 
@@ -131,13 +131,13 @@
           </div>
           <h3>文章未找到</h3>
           <p>抱歉，您要查看的文章不存在或已被删除。</p>
-          <button @click="goBack" class="error-back-btn">返回博客列表</button>
+          <button @click="goBack" class="error-back-btn">返回博客</button>
         </div>
       </div>
 
       <!-- 右侧边栏 -->
       <div class="sidebar">
-        <PersonalInfo />
+        <PersonalInfo ref="personalInfoRef" />
       </div>
     </div>
 
@@ -159,6 +159,9 @@ import MarkdownRenderer from '@/components/blog/MarkdownRenderer.vue'
 import CommentSection from '@/components/blog/CommentSection.vue'
 import RelatedArticles from '@/components/blog/RelatedArticles.vue'
 import { dbService } from '@/services/supabaseService'
+
+// 右侧栏引用（外层动画完成后触发其入场）
+const personalInfoRef = ref<InstanceType<typeof PersonalInfo>>()
 
 // 文章类型定义
 interface BlogPost {
@@ -322,44 +325,67 @@ const updateProgress = () => {
   progress.value = max > 0 ? (container.scrollTop / max) * 100 : 0
 }
 
-// 页面入场动画（数据加载完成后播放）
-const playEnterAnimation = () => {
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+// 外层入场动画（不依赖文章数据，立即播放）
+const playOuterAnimation = () => {
+  const tl = gsap.timeline({ defaults: { ease: 'power3.inOut' } })
   tl.from('.back-navigation', {
     opacity: 0,
     y: -20,
-    duration: 0.6
+    duration: 0.4,
+    clearProps: 'transform, opacity'
   })
-  tl.from('.article-header', {
-    opacity: 0,
-    y: 30,
-    duration: 0.8
-  }, '-=0.3')
-  tl.from('.article-content', {
-    opacity: 0,
-    y: 20,
-    duration: 0.6
-  }, '-=0.4')
-  tl.from('.article-footer', {
-    opacity: 0,
-    y: 20,
-    duration: 0.6
-  }, '-=0.3')
   tl.from('.sidebar', {
     opacity: 0,
     x: 50,
-    duration: 0.6
-  }, '-=0.6')
+    duration: 0.55,
+    clearProps: 'transform, opacity'
+  }, '<0.15')
+  // 外层就绪后触发右侧栏内部入场
+  tl.add(() => {
+    personalInfoRef.value?.playEntrance()
+  }, '<0.15')
+}
+
+// 内部入场动画（文章数据就绪后播放）
+const playArticleEntrance = () => {
+  const tl = gsap.timeline({ defaults: { ease: 'power3.inOut' } })
+  tl.from('.article-header', {
+    opacity: 0,
+    y: 30,
+    duration: 0.55,
+    clearProps: 'transform, opacity'
+  })
+  tl.from('.article-content', {
+    opacity: 0,
+    y: 24,
+    duration: 0.55,
+    clearProps: 'transform, opacity'
+  }, '<0.15')
+  tl.from('.article-footer', {
+    opacity: 0,
+    y: 20,
+    duration: 0.5,
+    clearProps: 'transform, opacity'
+  }, '<0.15')
+  // 加载/错误状态兜底动画
+  const state = document.querySelector('.loading-state, .error-state')
+  if (state) {
+    gsap.from(state, { opacity: 0, y: 20, duration: 0.4, ease: 'power3.inOut' })
+  }
 }
 
 // 生命周期
 onMounted(async () => {
-  await fetchArticle()
-  playEnterAnimation()
+  // 外层动画立即播放，不等待数据加载
+  playOuterAnimation()
 
   const container = document.querySelector<HTMLElement>('.blog-detail-container')
   container?.addEventListener('scroll', updateProgress, { passive: true })
   updateProgress()
+
+  // 内部数据独立加载，完成后播放文章入场动画
+  await fetchArticle()
+  playArticleEntrance()
 })
 
 onBeforeUnmount(() => {
@@ -413,6 +439,7 @@ onBeforeUnmount(() => {
 
 .blog-detail-main {
   display: flex;
+  flex-wrap: wrap;
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
@@ -424,7 +451,7 @@ onBeforeUnmount(() => {
 }
 
 .back-navigation {
-  grid-column: 1 / -1;
+  flex: 0 0 100%;
   margin-bottom: 20px;
 }
 
@@ -441,6 +468,7 @@ onBeforeUnmount(() => {
   transition: all 0.3s ease;
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .back-btn:hover {
@@ -452,6 +480,7 @@ onBeforeUnmount(() => {
 
 .content-area {
   flex: 3;
+  min-width: 0;
   min-height: calc(100vh - 140px);
 }
 
@@ -506,6 +535,8 @@ onBeforeUnmount(() => {
   color: #1f2937;
   line-height: 1.2;
   margin: 0 0 20px 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .article-meta {
@@ -587,9 +618,11 @@ onBeforeUnmount(() => {
 
 .article-content {
   line-height: 1.8;
-  max-width: 40vw;
+  max-width: 100%;
   color: #374151;
   font-size: 16px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .article-content img {
@@ -800,21 +833,30 @@ onBeforeUnmount(() => {
 @media (max-width: 768px) {
   .blog-detail-main {
     flex-direction: column;
-    padding: 15px;
-    gap: 20px;
+    padding: 12px;
+    gap: 16px;
+  }
+
+  /* 移动端 column 布局下给交叉轴显式宽度，防止内容（如代码块）把 flex 行撑开 */
+  .back-navigation {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .content-area {
+    width: 100%;
   }
 
   .sidebar {
-    max-width: none;
-    min-width: auto;
+    display: none;
   }
 
   .article-container {
-    padding: 24px;
+    padding: 20px;
   }
 
   .article-title {
-    font-size: 28px;
+    font-size: 24px;
   }
 
   /* 移动端正文全宽展示，避免 40vw 压缩 */
@@ -831,6 +873,7 @@ onBeforeUnmount(() => {
 
   .meta-left {
     flex-wrap: wrap;
+    gap: 10px;
   }
 
   .article-actions {
@@ -839,6 +882,20 @@ onBeforeUnmount(() => {
 
   .action-btn {
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .article-container {
+    padding: 16px;
+  }
+
+  .article-title {
+    font-size: 22px;
+  }
+
+  .back-btn {
+    padding: 10px 14px;
   }
 }
 </style>
