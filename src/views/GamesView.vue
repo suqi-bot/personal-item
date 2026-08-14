@@ -206,7 +206,7 @@ const selectType = (type: string) => {
 
 // 打开游戏详情
 const openGame = (game: Game) => {
-  router.push(`/game/${game.id}`)
+  router.push(`/games/${game.id}`)
 }
 
 // 生成 B站视频链接
