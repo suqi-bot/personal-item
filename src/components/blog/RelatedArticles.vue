@@ -233,7 +233,7 @@ onMounted(() => {
 .article-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  border-color: #4f46e5;
+  border-color: #111827;
   background: white;
 }
 
@@ -306,7 +306,7 @@ onMounted(() => {
 }
 
 .article-card:hover .article-arrow {
-  color: #4f46e5;
+  color: #111827;
   transform: translateX(4px);
 }
 

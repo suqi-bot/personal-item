@@ -16,9 +16,19 @@ let animationId: number;
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const scene = new THREE.Scene();
 
+const mouse = { x: 0, y: 0 };
+const smooth = { x: 0, y: 0 };
+const modelBasePosition = new THREE.Vector3();
+
 function init() {
     scene.background = null; // 设置为透明背景
     camera.position.set(0, 0, 1.5);
+    camera.lookAt(0, 0, 0);
+}
+
+function onMouseMove(event: MouseEvent) {
+    mouse.x = (event.clientX / window.innerWidth - 0.5) * 2;
+    mouse.y = (event.clientY / window.innerHeight - 0.5) * 2;
 }
 
 function LoadModel() {
@@ -36,6 +46,7 @@ function LoadModel() {
             
             // 将模型居中
             gltf.scene.position.sub(center);
+            modelBasePosition.copy(gltf.scene.position);
             
             // 根据模型大小调整缩放
             const maxDim = Math.max(size.x, size.y, size.z);
@@ -43,7 +54,6 @@ function LoadModel() {
             gltf.scene.scale.setScalar(scale);
             
             scene.add(modelGroup);
-            camera.lookAt(0, 0, 0);
         },
         function (progress) {
             console.log('加载进度:', (progress.loaded / progress.total * 100) + '%');
@@ -96,7 +106,16 @@ function Light() {
 // 渲染循环
 function animate() {
     animationId = requestAnimationFrame(animate);
-    
+
+    // 模型平移：平滑跟随鼠标（以屏幕中心为原点）
+    smooth.x += (mouse.x - smooth.x) * 0.05;
+    smooth.y += (mouse.y - smooth.y) * 0.05;
+    if (modelGroup) {
+        modelGroup.position.x = modelBasePosition.x + smooth.x * 0.02;
+        modelGroup.position.y = modelBasePosition.y - smooth.y * 0.02;
+        modelGroup.position.z = modelBasePosition.z;
+    }
+
     // 更新动态光源位置
     if (dynamicLight) {
         lightAnimationTime += 0.02; // 控制动画速度
@@ -131,6 +150,7 @@ onMounted(async () => {
     animate(); // 启动渲染循环
     
     window.addEventListener('resize', onWindowResize);
+    window.addEventListener('mousemove', onMouseMove);
 });
 
 onBeforeUnmount(() => {
@@ -139,6 +159,7 @@ onBeforeUnmount(() => {
         cancelAnimationFrame(animationId);
     }
     window.removeEventListener('resize', onWindowResize);
+    window.removeEventListener('mousemove', onMouseMove);
     if (renderer) {
         renderer.dispose();
     }

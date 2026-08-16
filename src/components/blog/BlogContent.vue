@@ -1,5 +1,5 @@
 <template>
-  <div class="blog-content" >
+  <div class="blog-content" :class="{ 'entrance-hidden': !entranceStarted }">
     <!-- 工具栏 -->
     <div v-if="posts.length > 0" class="toolbar">
       <div class="toolbar-left">
@@ -28,13 +28,14 @@
 
     <!-- 文章列表 -->
     <div v-if="posts.length > 0" :class="['posts-container', viewMode]">
-      <article 
-  v-for="post in sortedPosts" 
-  :key="post.id"
-  class="post-card"
-  @click="openPost(post)"
->
-
+      <article
+        v-for="post in paginatedPosts"
+        :key="post.id"
+        class="post-card"
+        @click="openPost(post)"
+        @mouseenter="onCardEnter"
+        @mouseleave="onCardLeave"
+      >
         <div class="post-header">
           <h2 class="post-title">{{ post.title }}</h2>
           <div class="post-meta">
@@ -43,15 +44,15 @@
             <span class="read-time">{{ post.readTime }} 阅读次数</span>
           </div>
         </div>
-        
-        <div class="post-excerpt" >
+
+        <div class="post-excerpt">
           {{ post.excerpt }}
         </div>
-        
+
         <div class="post-footer">
           <div class="tags">
-            <span 
-              v-for="tag in post.tags" 
+            <span
+              v-for="tag in post.tags"
               :key="tag"
               class="tag"
             >
@@ -67,7 +68,7 @@
         </div>
       </article>
     </div>
-    
+
     <!-- 空状态 -->
     <div v-else class="empty-state">
       <div class="empty-icon">
@@ -82,29 +83,33 @@
       <h3>暂无文章</h3>
       <p>没有找到匹配的文章，请尝试其他搜索关键词</p>
     </div>
-    
+
     <!-- 分页 -->
     <div v-if="posts.length > 0" class="pagination">
-      <button 
+      <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页</span>
+
+      <button
         class="page-btn"
         :disabled="currentPage === 1"
         @click="prevPage"
       >
         上一页
       </button>
-      
+
       <div class="page-numbers">
-        <span 
-          v-for="page in visiblePages" 
-          :key="page"
-          :class="['page-number', { active: page === currentPage }]"
-          @click="goToPage(page)"
-        >
-          {{ page }}
-        </span>
+        <template v-for="(page, index) in visiblePages" :key="index">
+          <span v-if="page === '...'" class="page-ellipsis">…</span>
+          <span
+            v-else
+            :class="['page-number', { active: page === currentPage }]"
+            @click="goToPage(page)"
+          >
+            {{ page }}
+          </span>
+        </template>
       </div>
-      
-      <button 
+
+      <button
         class="page-btn"
         :disabled="currentPage === totalPages"
         @click="nextPage"
@@ -116,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 
@@ -143,25 +148,63 @@ const router = useRouter()
 // 分页相关
 const currentPage = ref(1)
 const postsPerPage = 6
+let lastPage = 1
 
 // 视图模式和排序
 const viewMode = ref<'grid' | 'list'>('grid')
 const sortBy = ref('date')
 
 // 计算总页数
-const totalPages = computed(() => 
-  Math.ceil(props.posts.length / postsPerPage)
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(props.posts.length / postsPerPage))
 )
 
-// 计算可见页码
-const visiblePages = computed(() => {
-  const pages = []
-  const start = Math.max(1, currentPage.value - 2)
-  const end = Math.min(totalPages.value, start + 4)
-  
-  for (let i = start; i <= end; i++) {
-    pages.push(i)
+// 计算排序后的文章列表
+const sortedPosts = computed(() => {
+  const posts = [...props.posts]
+
+  switch (sortBy.value) {
+    case 'date':
+      return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    case 'title':
+      return posts.sort((a, b) => a.title.localeCompare(b.title))
+    case 'readTime':
+      return posts.sort((a, b) => b.readTime - a.readTime)
+    default:
+      return posts
   }
+})
+
+// 当前页的文章
+const paginatedPosts = computed(() => {
+  const start = (currentPage.value - 1) * postsPerPage
+  return sortedPosts.value.slice(start, start + postsPerPage)
+})
+
+// 计算可见页码（支持省略号）
+const visiblePages = computed<Array<number | '...'>>(() => {
+  const total = totalPages.value
+  const current = currentPage.value
+  const pages: Array<number | '...'> = []
+
+  if (total <= 7) {
+    for (let i = 1; i <= total; i++) pages.push(i)
+    return pages
+  }
+
+  const push = (page: number) => {
+    if (pages[pages.length - 1] !== page) pages.push(page)
+  }
+
+  push(1)
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+
+  if (start > 2) pages.push('...')
+  for (let i = start; i <= end; i++) push(i)
+  if (end < total - 1) pages.push('...')
+  push(total)
+
   return pages
 })
 
@@ -194,100 +237,168 @@ const nextPage = () => {
 }
 
 const goToPage = (page: number) => {
-  currentPage.value = page
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
 }
 
 // 切换视图模式
 const toggleViewMode = () => {
   viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid'
-
-  // 切换视图时播放动画
-  setTimeout(() => {
-    gsap.killTweensOf('.post-card')
-    gsap.fromTo('.post-card',
-      {
-        opacity: 0,
-        y: 100,
-        scale: 0.95
-      },
-      {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        duration: 1,
-        stagger: 0.08,
-        ease: 'power2.out'
-      }
-    )
-  }, 50)
+  nextTick(() => animatePosts(0, 60))
 }
 
 // 处理排序
-const handleSort = () => {
-  // 排序逻辑已通过计算属性 sortedPosts 实现
+const handleSort = () => {}
+
+// 偏好减少动态效果
+const prefersReducedMotion =
+  typeof window !== 'undefined' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+// 入场控制：由父组件在外层动画完成后触发
+const entranceTriggered = ref(false)
+const toolbarAnimated = ref(false)
+// 外层动画完成前隐藏内容（保留占位布局）
+const entranceStarted = ref(false)
+// 首次完整入场已播放的标志（避免与后续 posts 变化动画叠加）
+const entrancePlayedOnce = ref(false)
+
+// 工具栏入场动画（仅首次）
+const playToolbar = () => {
+  if (toolbarAnimated.value || !props.posts.length) return
+  toolbarAnimated.value = true
+  gsap.fromTo(
+    '.toolbar',
+    { opacity: 0, y: -20 },
+    {
+      opacity: 1,
+      y: 0,
+      duration: 0.655,
+      ease: 'power3.inOut',
+      clearProps: 'transform, opacity'
+    }
+  )
 }
 
+// 内层入场：工具栏 + 文章卡片（或空状态）
+const playEntrance = () => {
+  if (entranceStarted.value) return
+  entranceTriggered.value = true
+  entranceStarted.value = true
+  entrancePlayedOnce.value = true
+  nextTick(() => {
+    playToolbar()
+    animatePosts(0, 30)
+    const empty = document.querySelector('.empty-state')
+    if (empty) {
+      gsap.from(empty, { opacity: 0, y: 20, duration: 0.4, ease: 'power3.inOut' })
+    }
+  })
+}
 
-// 计算排序后的文章列表
-const sortedPosts = computed(() => {
-  const posts = [...props.posts]
-  
-  switch (sortBy.value) {
-    case 'date':
-      return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    case 'title':
-      return posts.sort((a, b) => a.title.localeCompare(b.title))
-    case 'readTime':
-      return posts.sort((a, b) => b.readTime - a.readTime)
-    default:
-      return posts
+defineExpose({ playEntrance })
+
+// 无父级协调时的兜底：自动显示内容
+onMounted(() => {
+  window.setTimeout(() => {
+    if (!entranceTriggered.value) playEntrance()
+  }, 1200)
+})
+
+// 文章卡片动画（light：搜索/筛选变化时的轻快模式）
+const animatePosts = (fromX = 0, fromY = 30, light = false) => {
+  const cards = gsap.utils.toArray<HTMLElement>('.post-card')
+  if (!cards.length) return
+
+  if (prefersReducedMotion) {
+    gsap.set(cards, { opacity: 1, x: 0, y: 0, scale: 1 })
+    return
+  }
+
+  gsap.killTweensOf(cards)
+  gsap.fromTo(
+    cards,
+    { opacity: light ? 0.4 : 0, x: fromX, y: fromY, scale: 0.98, willChange: 'transform, opacity' },
+    {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      scale: 1,
+      duration: light ? 0.25 : 0.4,
+      stagger: light ? 0.03 : 0.05,
+      ease: 'power3.inOut',
+      overwrite: 'auto',
+      clearProps: 'transform, opacity, willChange'
+    }
+  )
+}
+
+// 卡片悬停动画
+const onCardEnter = (event: MouseEvent) => {
+  const card = event.currentTarget as HTMLElement
+  gsap.to(card, {
+    y: -4,
+    scale: 1.02,
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+    duration: 0.4,
+    ease: 'power2.out',
+    overwrite: 'auto'
+  })
+}
+
+const onCardLeave = (event: MouseEvent) => {
+  const card = event.currentTarget as HTMLElement
+  gsap.to(card, {
+    y: 0,
+    scale: 1,
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+    duration: 0.4,
+    ease: 'power2.out',
+    overwrite: 'auto'
+  })
+}
+
+// 滚动到列表顶部
+const scrollToTop = () => {
+  const container = document.querySelector<HTMLElement>('.blog-container')
+  if (container) {
+    container.scrollTo({ top: 0, behavior: 'smooth' })
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+// 监听页码变化：方向感知动画 + 回到顶部
+watch(currentPage, (page) => {
+  const direction = page > lastPage ? 1 : -1
+  lastPage = page
+  nextTick(() => {
+    animatePosts(-direction * 50, 0)
+    scrollToTop()
+  })
+})
+
+// 排序变化时重置到第一页并重放动画
+watch(sortBy, () => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1
+  } else {
+    nextTick(() => animatePosts(0, 30))
   }
 })
 
-
-// 监听文章变化，重置页码
-watch(() => props.posts, () => {
-  currentPage.value = 1
-})
-
-// 组件挂载动画
-onMounted(() => {
-  gsap.fromTo('.post-card',
-    {
-      opacity: 0,
-      y: 30
-    },
-    {
-      opacity: 1,
-      y: 0,
-      duration: 0.6,
-      stagger: 0.1,
-      ease: 'power2.out'
-    }
-  )
-})
-
-// 监听页码变化，添加动画
-watch(currentPage, () => {
-  // 先杀死之前的动画
-  gsap.killTweensOf('.post-card')
-
-  // 确保卡片可见，然后执行动画
-  gsap.set('.post-card', { opacity: 1 })
-
-  gsap.fromTo('.post-card',
-    {
-      opacity: 0,
-      y: 20
-    },
-    {
-      opacity: 1,
-      y: 0,
-      duration: 0.4,
-      stagger: 0.05,
-      ease: 'power2.out'
-    }
-  )
+// 监听文章变化，重置页码；入场完成后搜索/筛选变化播放轻快动画
+watch(() => props.posts, (posts) => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1
+    return
+  }
+  if (posts.length > 0 && entranceTriggered.value && entrancePlayedOnce.value) {
+    nextTick(() => {
+      animatePosts(0, 12, true)
+    })
+  }
 })
 </script>
 
@@ -297,6 +408,11 @@ watch(currentPage, () => {
   padding: 30px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   scroll-behavior: auto;
+}
+
+/* 外层动画完成前隐藏内容（保留占位布局） */
+.blog-content.entrance-hidden {
+  visibility: hidden;
 }
 
 .toolbar {
@@ -340,8 +456,8 @@ watch(currentPage, () => {
 
 .sort-select:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
 }
 
 .view-toggle {
@@ -359,8 +475,8 @@ watch(currentPage, () => {
 
 .view-toggle:hover {
   background: #f3f4f6;
-  border-color: #4f46e5;
-  color: #4f46e5;
+  border-color: #111827;
+  color: #111827;
 }
 
 .posts-container.grid {
@@ -375,7 +491,6 @@ watch(currentPage, () => {
   flex-direction: column;
   gap: 24px;
   margin-bottom: 50px;
-  
 }
 
 @media (min-width: 1200px) {
@@ -395,12 +510,12 @@ watch(currentPage, () => {
   border-radius: 16px;
   padding: 24px;
   border: 1px solid #e5e7eb;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease;
   cursor: pointer;
   position: relative;
   overflow: hidden;
   height: 40vh;
-  
+
   display: flex;
   flex-direction: column;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -413,15 +528,13 @@ watch(currentPage, () => {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  background: linear-gradient(90deg, #111827, #4b5563);
   transform: scaleX(0);
   transition: transform 0.3s ease;
 }
 
 .post-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  border-color: #4f46e5;
+  border-color: #111827;
 }
 
 .post-card:hover::before {
@@ -432,14 +545,16 @@ watch(currentPage, () => {
 .posts-container.list .post-card {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: center;
   padding: 24px;
   height: auto;
+  gap: 24px;
 }
 
 .posts-container.list .post-header {
-  flex: 1;
-  margin-right: 20px;
+  flex: 0 0 280px;
+  margin-right: 0;
+  margin-bottom: 0;
 }
 
 .posts-container.list .post-title {
@@ -447,19 +562,15 @@ watch(currentPage, () => {
   margin-bottom: 8px;
 }
 
-.post-excerpt {
-  display: -webkit-box;
+.posts-container.list .post-excerpt {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin: 12px 0;
-  color: #6b7280;
-  line-height: 1.6;
-  font-size: 15px;
 }
 
 .posts-container.list .post-footer {
-  flex-shrink: 0;
+  flex: 0 0 150px;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
@@ -501,6 +612,10 @@ watch(currentPage, () => {
   margin-bottom: 24px;
   font-size: 16px;
   flex-grow: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .post-footer {
@@ -527,7 +642,7 @@ watch(currentPage, () => {
 .read-more {
   background: none;
   border: none;
-  color: #4f46e5;
+  color: #111827;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -540,7 +655,7 @@ watch(currentPage, () => {
 }
 
 .read-more:hover {
-  background: #f0f9ff;
+  background: #f3f4f6;
   transform: translateX(4px);
 }
 
@@ -568,6 +683,12 @@ watch(currentPage, () => {
   margin-top: 40px;
 }
 
+.page-info {
+  color: #6b7280;
+  font-size: 14px;
+  margin-right: auto;
+}
+
 .page-btn {
   background: white;
   border: 1px solid #d1d5db;
@@ -581,8 +702,8 @@ watch(currentPage, () => {
 
 .page-btn:hover:not(:disabled) {
   background: #f9fafb;
-  border-color: #4f46e5;
-  color: #4f46e5;
+  border-color: #111827;
+  color: #111827;
 }
 
 .page-btn:disabled {
@@ -612,8 +733,18 @@ watch(currentPage, () => {
 }
 
 .page-number.active {
-  background: #4f46e5;
+  background: #111827;
   color: white;
+}
+
+.page-ellipsis {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  user-select: none;
 }
 
 @media (max-width: 768px) {
@@ -634,6 +765,60 @@ watch(currentPage, () => {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+  }
+
+  /* 列表视图在窄屏下改为纵向 */
+  .posts-container.list .post-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .posts-container.list .post-header {
+    flex: none;
+    width: 100%;
+  }
+
+  .posts-container.list .post-excerpt {
+    width: 100%;
+    margin: 0;
+  }
+
+  .posts-container.list .post-footer {
+    flex: none;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* 卡片高度自适应，避免小屏下过高 */
+  .post-card {
+    height: auto;
+    min-height: 220px;
+  }
+
+  /* 分页换行压缩，避免溢出 */
+  .pagination {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .page-info {
+    width: 100%;
+    text-align: center;
+    margin-right: 0;
+  }
+
+  .page-number {
+    width: 34px;
+    height: 34px;
+    font-size: 14px;
+  }
+
+  .page-btn {
+    padding: 6px 14px;
+    font-size: 13px;
   }
 }
 </style>

@@ -10,7 +10,7 @@
         welcome to my blog
       </div>
     </div>
-    
+
     <div class="split">
       苏柒的个人博客
     </div>
@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import gsap from 'gsap'
 import SplitType from 'split-type'
 
@@ -52,151 +52,180 @@ const emit = defineEmits<{
   animationComplete: []
 }>()
 
+// 鼠标倾斜参数
+let tiltAnimationFrame: number | null = null
+
+// 立体阴影方向状态（随鼠标倾斜响应）
+const depthState = { x: 0, y: 1 }
+let depthTween: gsap.core.Tween | null = null
+
+function applyDepth() {
+  document.querySelectorAll('.split').forEach((el) => {
+    const element = el as HTMLElement
+    element.style.setProperty('--depth-x', String(depthState.x))
+    element.style.setProperty('--depth-y', String(depthState.y))
+  })
+}
+
+// 根据鼠标位置计算文字俯仰倾斜 + 立体阴影方向（以文字区域中心为原点）
+function handleMouseMove(event: MouseEvent) {
+  // 移动端不响应鼠标移动，文字固定在正中间
+  if (window.innerWidth <= 768) return
+
+  const rect = heroRef.value?.getBoundingClientRect()
+  if (!rect || rect.width === 0 || rect.height === 0) return
+
+  const centerX = rect.left + rect.width / 2
+  const centerY = rect.top + rect.height / 2
+  const nx = Math.max(-1, Math.min(1, (event.clientX - centerX) / (rect.width / 2)))
+  const ny = Math.max(-1, Math.min(1, (event.clientY - centerY) / (rect.height / 2)))
+
+  if (tiltAnimationFrame !== null) return
+  tiltAnimationFrame = requestAnimationFrame(() => {
+    tiltAnimationFrame = null
+    gsap.to('.hero-section', {
+      rotateX: ny * 3,
+      rotateY: nx * 3,
+      transformPerspective: 900,
+      duration: 0.6,
+      ease: 'power2.out'
+    })
+
+    if (depthTween) depthTween.kill()
+    depthTween = gsap.to(depthState, {
+      x: Math.max(-1, Math.min(1, -nx * 1.6)),
+      y: Math.max(0.4, Math.min(1.6, 1 + ny * 1.2)),
+      duration: 0.6,
+      ease: 'power2.out',
+      onUpdate: applyDepth
+    })
+  })
+}
+
+function handleMouseLeave() {
+  if (window.innerWidth <= 768) return
+
+  gsap.to('.hero-section', {
+    rotateX: 0,
+    rotateY: 0,
+    duration: 0.8,
+    ease: 'elastic.out(1, 0.4)'
+  })
+
+  if (depthTween) depthTween.kill()
+  depthTween = gsap.to(depthState, {
+    x: 0,
+    y: 1,
+    duration: 0.8,
+    ease: 'power2.out',
+    onUpdate: applyDepth
+  })
+}
+
 // 文字动画1 - 分行动画
 function createTextAnimation1() {
-  const splitElements = document.querySelectorAll(".split");
+  const splitElements = document.querySelectorAll('.split')
 
   if (splitElements.length === 0) {
-    console.warn('没有找到 .split 元素');
-    return;
+    console.warn('没有找到 .split 元素')
+    return
   }
 
-  splitElements.forEach(element => {
+  splitElements.forEach((element) => {
     try {
-      // 先显示元素
-      gsap.set(element, { opacity: 1 });
+      gsap.set(element, { opacity: 1 })
 
-      const split = new SplitType(element as HTMLElement, { types: 'lines' });
+      const split = new SplitType(element as HTMLElement, { types: 'lines' })
 
       if (split.lines && split.lines.length > 0) {
-        console.log('SplitType 成功生成', split.lines.length, '行');
-
-        // 设置初始状态
         gsap.set(split.lines, {
           rotationX: -100,
-          transformOrigin: "50% 50% -160px",
+          transformOrigin: '50% 50% -160px',
           opacity: 0
-        });
+        })
 
-        // 执行动画
         gsap.to(split.lines, {
           rotationX: 0,
           opacity: 1,
           duration: 1,
-          ease: "power3.out",
+          ease: 'power3.out',
           stagger: props.animationConfig.staggerDelay
-        });
+        })
       } else {
-        console.warn('SplitType 没有生成 lines，使用备用动画');
-        // 备用动画：直接对整个元素进行动画
         gsap.to(element, {
           y: 0,
           opacity: 1,
           duration: 0.8,
-          ease: "power3.out"
-        });
+          ease: 'power3.out'
+        })
       }
     } catch (error) {
-      console.error('文字动画1 错误:', error);
-      // 备用动画
+      console.error('文字动画1 错误:', error)
       gsap.to(element, {
         y: 0,
         opacity: 1,
         duration: 0.8,
-        ease: "power3.out"
-      });
+        ease: 'power3.out'
+      })
     }
-  });
+  })
 }
 
 // 文字动画2 - 字符动画
 function createTextAnimation2() {
-  const textElement = document.querySelector(".nav-box .text");
+  const textElement = document.querySelector('.nav-box .text')
   if (!textElement) {
-    console.warn('没有找到 .nav-box .text 元素');
-    return;
+    console.warn('没有找到 .nav-box .text 元素')
+    return
   }
 
   try {
-
-    const split = new SplitType(textElement as HTMLElement, { types: 'chars' });
+    const split = new SplitType(textElement as HTMLElement, { types: 'chars' })
 
     if (split.chars && split.chars.length > 0) {
-      // 设置初始状态
-      gsap.set(split.chars, {
-        x: 100,
-        opacity: 0
-      });
+      gsap.set(split.chars, { x: 100, opacity: 0 })
 
-      // 执行动画
       gsap.to(split.chars, {
         x: 0,
         opacity: 1,
         duration: 1,
-        ease: "power2.out",
+        ease: 'power2.out',
         stagger: 0.05
-      });
+      })
     } else {
-      console.warn('SplitType 没有生成 chars，使用备用动画');
-      gsap.to(textElement, {
-        opacity: 1,
-        duration: 0.6,
-        ease: "power2.out"
-      });
+      gsap.to(textElement, { opacity: 1, duration: 0.6, ease: 'power2.out' })
     }
   } catch (error) {
-    console.error('文字动画2 错误:', error);
-    // 备用动画
-    gsap.to(textElement, {
-      opacity: 1,
-      duration: 0.6,
-      ease: "power2.out"
-    });
+    console.error('文字动画2 错误:', error)
+    gsap.to(textElement, { opacity: 1, duration: 0.6, ease: 'power2.out' })
   }
 }
 
 // 创建完整的动画时间线
 function createAnimationTimeline() {
-  console.log('创建动画时间线')
-
   const tl = gsap.timeline({
-    onStart: () => {
-      console.log('动画开始')
-      emit('animationStart')
-    },
-    onComplete: () => {
-      console.log('动画完成')
-      emit('animationComplete')
-    }
+    onStart: () => emit('animationStart'),
+    onComplete: () => emit('animationComplete')
   })
 
-
- // 然后执行文字动画
-  tl.call(() => {
-    console.log('执行文字分行动画')
-    createTextAnimation1()
-  }, [], `+=${props.animationConfig.textDelay}`)
+  tl.call(createTextAnimation1, [], `+=${props.animationConfig.textDelay}`)
 
   tl.set('.nav-box', { width: 0 })
 
-  // 先执行简单的导航框动画
+  const navBoxWidth = Math.min(330, window.innerWidth * 0.82)
+
   tl.to('.nav-box', {
     opacity: 1,
     duration: 1,
-    width: 330,
-    ease: ""
+    width: navBoxWidth,
+    ease: ''
   }, '>=0.3')
-
 
   tl.to('.nav-box .text', {
-    opacity:1
+    opacity: 1
   }, '>=0.3')
- 
 
-  tl.call(() => {
-    console.log('执行文字字符动画')
-    createTextAnimation2()
-  }, [], "-=0.5")
+  tl.call(createTextAnimation2, [], '-=0.5')
 
   return tl
 }
@@ -211,12 +240,10 @@ const playAnimation = async () => {
   isAnimationPlaying.value = true
   console.log('开始执行Hero动画')
 
-  // 确保DOM完全渲染后再执行动画
   await nextTick()
 
   const timeline = createAnimationTimeline()
 
-  // 动画完成后重置状态
   timeline.eventCallback('onComplete', () => {
     isAnimationPlaying.value = false
     console.log('Hero动画播放完成')
@@ -227,37 +254,32 @@ const playAnimation = async () => {
 
 const resetAnimation = () => {
   try {
-    // 重置动画状态
     isAnimationPlaying.value = false
 
-    // 重置所有动画元素到初始隐藏状态
     gsap.set('.split', { opacity: 0 })
     gsap.set('.nav-box', { opacity: 0, width: 0 })
     gsap.set('.nav-box .text', { opacity: 0 })
 
-    // 清理SplitType生成的元素
-    const splitElements = document.querySelectorAll(".split");
-    splitElements.forEach(element => {
+    const splitElements = document.querySelectorAll('.split')
+    splitElements.forEach((element) => {
       if (element.hasAttribute('data-split-type')) {
-        // 恢复原始文本
-        const originalText = element.textContent;
-        element.innerHTML = originalText || '';
+        const originalText = element.textContent
+        element.innerHTML = originalText || ''
       }
-    });
+    })
 
-    const textElement = document.querySelector(".nav-box .text");
+    const textElement = document.querySelector('.nav-box .text')
     if (textElement && textElement.hasAttribute('data-split-type')) {
-      const originalText = textElement.textContent;
-      textElement.innerHTML = originalText || '';
+      const originalText = textElement.textContent
+      textElement.innerHTML = originalText || ''
     }
 
     console.log('动画重置完成')
   } catch (error) {
-    console.error('重置动画错误:', error);
+    console.error('重置动画错误:', error)
   }
 }
 
-// 暴露方法给父组件
 defineExpose({
   playAnimation,
   resetAnimation
@@ -265,7 +287,13 @@ defineExpose({
 
 onMounted(async () => {
   await nextTick()
-  // 默认不自动播放，由父组件控制
+  window.addEventListener('mousemove', handleMouseMove)
+  document.addEventListener('mouseleave', handleMouseLeave)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseleave', handleMouseLeave)
 })
 </script>
 
@@ -282,15 +310,29 @@ onMounted(async () => {
   flex-direction: column;
   font-size: large;
   overflow: hidden;
+  perspective: 900px;
+  transform-style: preserve-3d;
 }
 
 .split {
   overflow: hidden;
-  font-size: clamp(2rem, 12rem, 5vw);
+  font-size: clamp(2rem, 8vw, 12rem);
   text-align: center;
   perspective: 500px;
   color: #121212;
   opacity: 0; /* 初始隐藏 */
+  transform-style: preserve-3d;
+  /* 立体文字阴影（厚度方向随鼠标倾斜响应） */
+  text-shadow:
+    calc(var(--depth-x, 0) * 1px) calc(var(--depth-y, 1) * 1px) 0 #8a8a8a,
+    calc(var(--depth-x, 0) * 2px) calc(var(--depth-y, 1) * 2px) 0 #7d7d7d,
+    calc(var(--depth-x, 0) * 3px) calc(var(--depth-y, 1) * 3px) 0 #707070,
+    calc(var(--depth-x, 0) * 4px) calc(var(--depth-y, 1) * 4px) 0 #636363,
+    calc(var(--depth-x, 0) * 5px) calc(var(--depth-y, 1) * 5px) 0 #565656,
+    calc(var(--depth-x, 0) * 6px) calc(var(--depth-y, 1) * 6px) 0 #494949,
+    calc(var(--depth-x, 0) * 7px) calc(var(--depth-y, 1) * 7px) 0 #3c3c3c,
+    calc(var(--depth-x, 0) * 8px) calc(var(--depth-y, 1) * 8px) 0 #2f2f2f,
+    0 10px 16px rgba(0, 0, 0, 0.4);
 }
 
 .nav-box {
@@ -301,6 +343,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   opacity: 0; /* 初始隐藏 */
+  max-width: 86vw;
 }
 
 .nav-box-background {
@@ -316,5 +359,25 @@ onMounted(async () => {
   overflow: hidden;
   z-index: 2;
   opacity: 0; /* 初始隐藏 */
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .hero-section {
+    gap: 14px;
+  }
+
+  .split {
+    font-size: 2.2rem;
+    /* 移动端去掉伪3D立体阴影 */
+    text-shadow: none;
+  }
+
+  .nav-box {
+    height: 32px;
+  }
 }
 </style>

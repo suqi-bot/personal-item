@@ -1,5 +1,8 @@
 <template>
   <div class="blog-container">
+    <!-- 动态背景 -->
+    <BlogBackground />
+    
     <!-- 标题栏 -->
     <Titlebar />
     
@@ -8,28 +11,47 @@
       <!-- 左侧内容区域 -->
       <div class="content-area">
         <!-- 搜索栏 -->
-        <!-- <SearchBar @search="handleSearch" /> -->
+        <SearchBar @search="handleSearch" />
+        
+        <!-- 加载骨架 -->
+        <div v-if="loading" class="posts-skeleton">
+          <div v-for="n in 3" :key="n" class="skeleton-card">
+            <div class="skeleton-line w60"></div>
+            <div class="skeleton-line w40"></div>
+            <div class="skeleton-line w90"></div>
+          </div>
+        </div>
         
         <!-- 博客内容 -->
-        <BlogContent :posts="filteredPosts" />
+        <BlogContent v-else ref="contentRef" :posts="filteredPosts" />
       </div>
       
       <!-- 右侧个人信息栏 -->
       <div class="sidebar">
-        <PersonalInfo />
+        <PersonalInfo 
+          ref="personalInfoRef"
+          :articles="articles" 
+          @search="handleSearch"
+          @filter-month="handleMonthFilter"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { gsap } from 'gsap'
 import Titlebar from '@/components/layout/Titlebar.vue'
+import BlogBackground from '@/components/modules/BlogBackground.vue'
 import SearchBar from '@/components/blog/SearchBar.vue'
 import BlogContent from '@/components/blog/BlogContent.vue'
 import PersonalInfo from '@/components/blog/PersonalInfo.vue'
 import SupabaseService from '@/services/supabaseService'
+
+// 子组件引用（外层动画完成后触发内层入场）
+const contentRef = ref<InstanceType<typeof BlogContent>>()
+const personalInfoRef = ref<InstanceType<typeof PersonalInfo>>()
 
 // Supabase articles表类型
 interface Article {
@@ -47,6 +69,8 @@ interface Article {
 
 // 搜索关键词
 const searchKeyword = ref('')
+// 归档月份筛选（YYYY-MM）
+const selectedMonth = ref('')
 
 // 文章数据
 const articles = ref<Article[]>([])
@@ -66,30 +90,55 @@ const fetchArticles = async () => {
     articles.value = (data as unknown as Article[]).filter(a => a.published)
   }
   loading.value = false
+
+  // 数据就绪：若外层动画已完成则立即触发内层入场
+  if (outerDone.value) triggerInner()
 }
 
+// 外层动画完成标志 + 内层入场协调（外层完成 && 数据就绪 才触发）
+const outerDone = ref(false)
+
+const triggerInner = () => {
+  if (innerTriggered.value) return
+  innerTriggered.value = true
+  nextTick(() => {
+    contentRef.value?.playEntrance()
+    personalInfoRef.value?.playEntrance()
+  })
+}
+
+const innerTriggered = ref(false)
 
 onMounted(() => {
-  
-
-  fetchArticles()
-  const tl = gsap.timeline()
+  // 外层动画：整体 → 左侧内容 → 右侧栏，间隔 0.15s 错开进场
+  const tl = gsap.timeline({ defaults: { ease: 'power3.inOut' } })
   tl.from('.blog-main', {
     opacity: 0,
-    y: 50,
-    duration: 1,
-    delay: 0.5
+    y: 40,
+    filter: 'blur(10px)',
+    duration: 0.655,
+    delay: 0.05,
+    clearProps: 'transform, opacity, filter'
   })
   tl.from('.content-area', {
     opacity: 0,
     x: -50,
-    duration: 0.8
-  }, '-=0.5')
+    filter: 'blur(8px)',
+    duration: 0.655,
+    clearProps: 'transform, opacity, filter'
+  }, '<0.15')
   tl.from('.sidebar', {
     opacity: 0,
     x: 50,
-    duration: 0.8
-  }, '-=0.8')
+    filter: 'blur(8px)',
+    duration: 0.655,
+    clearProps: 'transform, opacity, filter'
+  }, '<0.15')
+  // 间隔 0.15s 触发内层加载（骨架 → 数据 → 小动画）
+  tl.add(() => {
+    outerDone.value = true
+    fetchArticles()
+  }, '<0.15')
 })
 
 // 过滤后的文章列表（适配BlogContent所需结构）
@@ -100,26 +149,40 @@ const filteredPosts = computed(() => {
     title: article.title,
     excerpt: article.excerpt,
     content: article.content,
-    author: article.author_id, // 可根据author_id查用户表，这里直接用id
+    author: 'SuQi',
     date: article.created_at,
     tags: [], // 你可以根据实际业务扩展tags字段
     readTime: article.read_time ?? 0
   })
-  const list = articles.value.map(adapt)
-  if (!searchKeyword.value) {
-    return list
+  let list = articles.value.map(adapt)
+
+  // 归档月份筛选
+  if (selectedMonth.value) {
+    list = list.filter(post =>
+      post.date.substring(0, 7) === selectedMonth.value
+    )
   }
-  return list.filter(post =>
-    post.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-    post.excerpt.toLowerCase().includes(searchKeyword.value.toLowerCase())
-  )
+
+  // 关键词搜索
+  if (searchKeyword.value) {
+    const keyword = searchKeyword.value.toLowerCase()
+    list = list.filter(post =>
+      post.title.toLowerCase().includes(keyword) ||
+      post.excerpt.toLowerCase().includes(keyword)
+    )
+  }
+
+  return list
 })
 
-console.log(filteredPosts)  
-
-// 处理搜索
+// 处理搜索（与归档月份筛选叠加生效）
 const handleSearch = (keyword: string) => {
   searchKeyword.value = keyword
+}
+
+// 处理归档月份筛选（与搜索叠加生效）
+const handleMonthFilter = (month: string) => {
+  selectedMonth.value = month
 }
 </script>
 
@@ -141,18 +204,16 @@ const handleSearch = (keyword: string) => {
   scrollbar-width: none;
 }
 
-
-
-.scrollable::-webkit-scrollbar {
-  display: none;
-}
-
 .blog-main {
+  position: relative;
+  z-index: 1;
   display: flex;
   width: 100%;
   margin: 20px 0 auto;
   gap: 25px;
   min-height: calc(100vh - 140px);
+  padding-left: 24px;
+  box-sizing: border-box;
 }
 
 .content-area {
@@ -166,14 +227,58 @@ const handleSearch = (keyword: string) => {
   min-width: 350px;
 }
 
+/* 加载骨架屏 */
+.posts-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: skeleton-fade 0.4s ease;
+}
+
+@keyframes skeleton-fade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.skeleton-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e5e7eb;
+  height: 40vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+
+.skeleton-line {
+  height: 16px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 37%, #f3f4f6 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+.skeleton-line.w60 { width: 60%; }
+.skeleton-line.w40 { width: 40%; }
+.skeleton-line.w90 { width: 90%; }
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
 @media (max-width: 768px) {
   .blog-main {
     flex-direction: column;
     padding: 10px;
   }
 
+  /* 移动端不显示右侧个人信息栏 */
   .sidebar {
-    max-width: none;
+    display: none;
   }
 }
 </style>

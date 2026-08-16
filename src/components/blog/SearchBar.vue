@@ -9,7 +9,7 @@
       <input
         v-model="searchInput"
         type="text"
-        placeholder="搜索文章标题、内容或标签... (Ctrl+K)"
+        placeholder="搜索文章标题、内容或标签..."
         class="search-input"
         @input="handleInput"
         @keyup.enter="handleSearch"
@@ -83,7 +83,7 @@ const handleInput = () => {
   clearTimeout(searchTimeout.value)
   searchTimeout.value = setTimeout(() => {
     emit('search', searchInput.value)
-  }, 300)
+  }, 150)
 }
 
 // 搜索防抖定时器
@@ -169,11 +169,13 @@ onUnmounted(() => {
   transition: all 0.3s ease;
   border: 2px solid transparent;
   min-height: 60px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .search-box:focus-within {
   box-shadow: 0 6px 30px rgba(0, 0, 0, 0.15);
-  border-color: #4f46e5;
+  border-color: #111827;
   transform: translateY(-2px);
 }
 
@@ -184,11 +186,12 @@ onUnmounted(() => {
 }
 
 .search-box:focus-within .search-icon {
-  color: #4f46e5;
+  color: #111827;
 }
 
 .search-input {
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   font-size: 18px;
@@ -212,6 +215,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .clear-btn:hover {
@@ -226,6 +230,7 @@ onUnmounted(() => {
   margin-left: 12px;
   opacity: 0.6;
   font-size: 12px;
+  flex-shrink: 0;
 }
 
 .shortcut-hint kbd {
@@ -284,7 +289,7 @@ onUnmounted(() => {
 
 .suggestion-item:hover {
   background: #f3f4f6;
-  color: #4f46e5;
+  color: #111827;
 }
 
 .suggestion-item:last-child {
@@ -292,12 +297,22 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
+  .search-container {
+    margin-bottom: 24px;
+  }
+
   .search-box {
-    padding: 10px 16px;
+    padding: 12px 18px;
+    min-height: 52px;
   }
   
   .search-input {
     font-size: 14px;
+  }
+
+  /* 移动端无 Ctrl+K，隐藏快捷键提示 */
+  .shortcut-hint {
+    display: none;
   }
 }
 </style>
