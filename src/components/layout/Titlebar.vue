@@ -21,6 +21,7 @@ const navItems = [
     { path: '/', label: '首页' },
     { path: '/blog', label: '博客' },
     { path: '/games', label: '游戏' },
+    { path: '/tools', label: '工具' },
     { path: '/about', label: '关于' }
 ].map((item, index) => ({ ...item, index }))
 
@@ -123,8 +124,8 @@ onMounted(() => {
         right: 0;
         position: absolute;
         height: 100%;
-        width: 30%;
-        min-width: 200px;
+        width: 36%;
+        min-width: 300px;
 
     }
    
@@ -173,7 +174,7 @@ onMounted(() => {
         position: absolute;
         bottom: 0;
         left: 0;
-        width: calc((100%/4)*1);
+        width: calc((100%/5)*1);
         height: 4px;
         border-radius: 2px;
         background: linear-gradient(90deg, #111827, #4b5563);

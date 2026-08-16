@@ -36,6 +36,16 @@ const router = createRouter({
       path: '/games/:id',
       name: 'game-detail',
       component: () => import('../views/GameDetailView.vue'),
+    },
+    {
+      path: '/tools',
+      name: 'tools',
+      component: () => import('../views/ToolsView.vue'),
+    },
+    {
+      path: '/tools/:id',
+      name: 'tool-detail',
+      component: () => import('../views/ToolDetailView.vue'),
     }
   ],
 })
