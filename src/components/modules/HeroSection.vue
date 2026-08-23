@@ -7,13 +7,13 @@
     <div class="nav-box" ref="navBoxRef">
       <div class="nav-box-background"></div>
       <div class="text">
-        welcome to my blog
+        welcome to my site
       </div>
     </div>
 
-    <div class="split">
-      苏柒的个人博客
-    </div>
+      <div class="split">
+       苏柒的小站
+      </div>
   </section>
 </template>
 

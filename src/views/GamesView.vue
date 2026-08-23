@@ -112,6 +112,7 @@
         <p>没有找到匹配的游戏，请调整筛选条件</p>
       </div>
     </div>
+    <SiteFooter />
   </div>
 </template>
 
@@ -121,6 +122,7 @@ import { useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import Titlebar from '@/components/layout/Titlebar.vue'
 import BlogBackground from '@/components/modules/BlogBackground.vue'
+import SiteFooter from '@/components/layout/SiteFooter.vue'
 import { dbService } from '@/services/supabaseService'
 
 // 游戏类型

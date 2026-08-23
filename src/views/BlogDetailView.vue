@@ -1,23 +1,22 @@
 <template>
   <div class="blog-detail-container">
+    <!-- 动态背景 -->
+    <BlogBackground />
+
     <!-- 标题栏 -->
     <Titlebar />
 
     <!-- 文章详情主体 -->
     <div class="blog-detail-main">
-      <!-- 返回按钮 -->
-      <div class="back-navigation">
-        <button @click="goBack" class="back-btn">
+      <!-- 文章内容区域 -->
+      <div class="content-area">
+        <!-- 返回悬浮球 -->
+        <button @click="goBack" class="back-btn" aria-label="返回小站列表">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
               stroke-linejoin="round" />
           </svg>
-          返回博客列表
         </button>
-      </div>
-
-      <!-- 文章内容区域 -->
-      <div class="content-area">
         <!-- 文章头部 -->
         <article class="article-container" v-if="article">
           <header class="article-header">
@@ -123,23 +122,28 @@
           </div>
           <h3>文章未找到</h3>
           <p>抱歉，您要查看的文章不存在或已被删除。</p>
-          <button @click="goBack" class="error-back-btn">返回博客列表</button>
+          <button @click="goBack" class="error-back-btn">返回小站列表</button>
         </div>
       </div>
 
       <!-- 右侧边栏 -->
-      <div class="sidebar">
+      <div class="sidebar" ref="sidebarRef" @scroll="onSidebarScroll">
         <PersonalInfo />
+        <div class="sidebar-fade sidebar-fade-top" :class="{ visible: canScrollUp }"></div>
+        <div class="sidebar-fade sidebar-fade-bottom" :class="{ visible: canScrollDown }"></div>
       </div>
     </div>
+    <SiteFooter />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import Titlebar from '@/components/layout/Titlebar.vue'
+import BlogBackground from '@/components/modules/BlogBackground.vue'
+import SiteFooter from '@/components/layout/SiteFooter.vue'
 import PersonalInfo from '@/components/blog/PersonalInfo.vue'
 import MarkdownRenderer from '@/components/blog/MarkdownRenderer.vue'
 import CommentSection from '@/components/blog/CommentSection.vue'
@@ -184,6 +188,23 @@ const article = ref<BlogPost | null>(null)
 const loading = ref(true)
 const isLiked = ref(false)
 const likeCount = ref(0)
+
+// 侧边栏独立滚动：边缘渐隐控制
+const sidebarRef = ref<HTMLElement>()
+const canScrollUp = ref(false)
+const canScrollDown = ref(false)
+const sidebarResizeObserver = new ResizeObserver(() => updateSidebarFade())
+
+const updateSidebarFade = () => {
+  const el = sidebarRef.value
+  if (!el) return
+  canScrollUp.value = el.scrollTop > 0
+  canScrollDown.value = el.scrollTop + el.clientHeight < el.scrollHeight - 1
+}
+
+const onSidebarScroll = () => {
+  updateSidebarFade()
+}
 
 
 // 方法
@@ -313,6 +334,14 @@ const fetchArticle = async () => {
 onMounted(async () => {
   await fetchArticle()
 
+  // 侧边栏滚动边缘渐隐
+  await nextTick()
+  updateSidebarFade()
+  if (sidebarRef.value?.firstElementChild) {
+    sidebarResizeObserver.observe(sidebarRef.value.firstElementChild)
+  }
+  window.addEventListener('resize', updateSidebarFade)
+
   /* // 页面加载动画
   if (article.value) {
     gsap.timeline()
@@ -342,6 +371,8 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   // 清理可能存在的异步操作或订阅
   article.value = null
+  sidebarResizeObserver.disconnect()
+  window.removeEventListener('resize', updateSidebarFade)
 })
 
 </script>
@@ -366,7 +397,10 @@ onBeforeUnmount(() => {
 }
 
 .blog-detail-main {
+  position: relative;
+  z-index: 1;
   display: flex;
+  justify-content: center;
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
@@ -375,35 +409,39 @@ onBeforeUnmount(() => {
   min-height: calc(100vh - 140px);
 }
 
-.back-navigation {
-  grid-column: 1 / -1;
-  margin-bottom: 20px;
-}
-
 .back-btn {
+  position: fixed;
+  top: 88px;
+  left: 24px;
+  z-index: 50;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 12px 16px;
-  color: #6b7280;
+  border-radius: 50%;
+  color: #111827;
   cursor: pointer;
+  box-shadow: 0 2px 10px rgba(17, 24, 39, 0.12);
   transition: all 0.3s ease;
-  font-size: 14px;
-  font-weight: 500;
+  animation: float-in 0.5s ease;
 }
 
 .back-btn:hover {
-  background: #f9fafb;
-  border-color: #4f46e5;
-  color: #4f46e5;
-  transform: translateX(-2px);
+  box-shadow: 0 4px 16px rgba(17, 24, 39, 0.2);
+}
+
+@keyframes float-in {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .content-area {
-  flex: 3;
+  /* 内容列固定宽度，窗口缩放时只影响留白，不挤压正文 */
+  width: 780px;
+  flex-shrink: 0;
   min-height: calc(100vh - 140px);
 }
 
@@ -411,6 +449,44 @@ onBeforeUnmount(() => {
   flex: 1;
   max-width: 400px;
   min-width: 350px;
+  position: sticky;
+  top: 80px;
+  align-self: flex-start;
+  height: calc(100vh - 100px);
+  overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar-fade {
+  position: sticky;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+}
+
+.sidebar-fade.visible {
+  opacity: 1;
+}
+
+.sidebar-fade-top {
+  top: 0;
+  margin-bottom: -20px;
+  background: linear-gradient(to bottom, #f5f5f5, rgba(245, 245, 245, 0));
+}
+
+.sidebar-fade-bottom {
+  bottom: 0;
+  margin-top: -20px;
+  background: linear-gradient(to top, #f5f5f5, rgba(245, 245, 245, 0));
 }
 
 .article-container {
@@ -724,34 +800,53 @@ onBeforeUnmount(() => {
   transform: translateY(-1px);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
   .blog-detail-main {
     flex-direction: column;
-    padding: 15px;
-    gap: 20px;
   }
 
+  .content-area {
+    width: 100%;
+  }
+
+  /* 窄屏/平板不再展示右侧个人信息栏 */
   .sidebar {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .article-content {
     max-width: none;
-    min-width: auto;
+  }
+
+  .blog-detail-main {
+    padding: 15px;
   }
 
   .article-container {
-    padding: 24px;
+    padding: 20px;
   }
 
   .article-title {
-    font-size: 28px;
+    font-size: 26px;
+    line-height: 1.35;
   }
 
   .article-meta {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 14px;
   }
 
   .meta-left {
     flex-wrap: wrap;
+    gap: 10px 16px;
+    font-size: 13px;
+  }
+
+  .meta-right {
+    gap: 10px;
   }
 
   .article-actions {

@@ -107,7 +107,9 @@ onMounted(() => {
   margin: 20px 0;
   font-family: 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   position: relative;
 }
@@ -236,14 +238,15 @@ onMounted(() => {
   border-radius: 0 8px 8px 0;
 }
 
-/* 表格：窄屏可横向滚动 */
+/* 表格：窄屏可自行换行适配，含长内容时横向滚动 */
 .markdown-content :deep(table) {
   display: block;
   overflow-x: auto;
   border-collapse: collapse;
   margin: 16px 0;
   max-width: 100%;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .markdown-content :deep(th),

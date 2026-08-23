@@ -311,7 +311,7 @@ onMounted(async () => {
   // 无父级协调时的兜底：自动显示内容（如详情页单独使用）
   window.setTimeout(() => {
     if (!entranceTriggered.value) playEntrance()
-  }, 1200)
+  }, 300)
 })
 </script>
 

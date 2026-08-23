@@ -11,10 +11,18 @@
       <!-- 个人信息卡片 -->
       <section class="card hero-card">
         <div class="hero-left">
-          <div class="avatar">Su</div>
+          <div class="avatar">
+            <img
+              v-if="avatarLoaded"
+              :src="githubAvatarUrl"
+              alt="苏柒"
+              @error="avatarError = true"
+            />
+            <span v-else>Su</span>
+          </div>
         </div>
         <div class="hero-right">
-          <h1 class="name">Suqi</h1>
+          <h1 class="name">苏柒</h1>
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">性别</span>
@@ -50,6 +58,26 @@
         </div>
       </section>
 
+      <!-- 就职经历 -->
+      <section class="card">
+        <h2 class="section-title">就职经历</h2>
+        <div class="job-item">
+          <div class="job-left">
+            <div class="job-company">
+              <a
+                class="job-company-link"
+                href="https://qitaimiao.com/"
+                target="_blank"
+              >杭州液态喵网络科技有限公司</a>
+            </div>
+            <div class="job-role">游戏程序开发</div>
+          </div>
+          <div class="job-right">
+            <span class="job-period">2026年5月 ~ 至今</span>
+          </div>
+        </div>
+      </section>
+
       <!-- 项目经历 -->
       <section class="card">
         <h2 class="section-title">项目经历</h2>
@@ -69,23 +97,6 @@
               <ul class="project-points">
                 <li v-for="(point, pIndex) in project.points" :key="pIndex">{{ point }}</li>
               </ul>
-              <div v-if="project.videos && project.videos.length" class="project-videos">
-                <div class="videos-label">演示视频</div>
-                <div class="video-grid">
-                  <iframe
-                    v-for="bv in project.videos"
-                    :key="bv"
-                    :src="`https://player.bilibili.com/player.html?bvid=${bv}&high_quality=1&danmaku=0`"
-                    class="video-frame"
-                    scrolling="no"
-                    border="0"
-                    frameborder="no"
-                    framespacing="0"
-                    allowfullscreen="true"
-                    loading="lazy"
-                  ></iframe>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -133,14 +144,32 @@
         </section>
       </div>
     </div>
+    <SiteFooter />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { gsap } from 'gsap'
 import Titlebar from '@/components/layout/Titlebar.vue'
 import BlogBackground from '@/components/modules/BlogBackground.vue'
+import SiteFooter from '@/components/layout/SiteFooter.vue'
+
+// 头像：默认文字占位，预加载 GitHub 头像成功后替换
+const githubAvatarUrl = 'https://github.com/suqi-bot.png'
+const avatarLoaded = ref(false)
+const avatarError = ref(false)
+
+function loadGithubAvatar() {
+  const img = new Image()
+  img.onload = () => {
+    avatarLoaded.value = true
+  }
+  img.onerror = () => {
+    avatarError.value = true
+  }
+  img.src = githubAvatarUrl
+}
 
 // 专业技能
 const skills = [
@@ -168,7 +197,7 @@ const advantages = [
   },
   {
     title: '自研 Demo',
-    desc: '独立完成多款游戏 Demo 全流程搭建，美术资源取自网络；3D 横版动作项目演示 BV114wkzQEU6、BV1fmQABBEoY'
+    desc: '独立完成多款游戏 Demo 全流程搭建，美术资源取自网络，覆盖动作、卡牌等玩法类型'
   }
 ]
 
@@ -187,8 +216,7 @@ const projects = [
       '性能优化：对象池管理子弹、特效；UGUI 无限滚动列表，减少 GC；复用预制体提升资源复用率',
       '数据持久化：Json 本地存储游戏配置数据',
       '动画管理：Animator Controller + 动画事件驱动角色动画表现'
-    ],
-    videos: ['BV114wkzQEU6', 'BV1fmQABBEoY']
+    ]
   },
   {
     name: '抽卡前端页面展示',
@@ -227,11 +255,9 @@ const education = {
 
 // 资格证书
 const certificates = [
-  '普通话二级甲等',
   '大数据应用开发（Java）职业技能证书',
   'JavaWeb 应用开发职业技能等级证',
-  '大学英语四级',
-  '全国计算机一级'
+  '英语四级',
 ]
 
 // 荣誉奖项
@@ -239,12 +265,11 @@ const awards = [
   '领航杯人工智能竞赛 一等奖',
   '江苏省省技能移动应用设计与开发 三等奖',
   '第五届全球校园人工智能算法精英大赛 省级三等奖',
-  '全国大学英语四级合格证书',
-  '全国计算机一级证书'
 ]
 
 // 入场动画
 onMounted(() => {
+  loadGithubAvatar()
   const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
   tl.from('.hero-card', { opacity: 0, y: 40, duration: 0.8, delay: 0.3 })
   tl.from('.card:not(.hero-card)', {
@@ -336,6 +361,13 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   box-shadow: 0 8px 24px rgba(17, 24, 39, 0.3);
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .hero-right {
@@ -613,31 +645,51 @@ onMounted(() => {
   background: #4b5563;
 }
 
-.project-videos {
-  margin-top: 16px;
-}
-
-.videos-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 10px;
-}
-
-.video-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+/* 就职经历 */
+.job-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
+  background: #f9fafb;
+  border: 1px solid #eef0f3;
+  border-radius: 12px;
+  padding: 20px 24px;
+  transition: all 0.3s ease;
 }
 
-.video-frame {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border: none;
+.job-item:hover {
+  border-color: #111827;
+}
+
+.job-company {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.job-company-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.job-company-link:hover {
+  text-decoration: underline;
+}
+
+.job-role {
+  font-size: 14px;
+  color: #4b5563;
+  margin-top: 6px;
+}
+
+.job-period {
+  font-size: 13px;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 4px 12px;
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  background: #0f172a;
-  display: block;
 }
 
 /* 教育经历 */

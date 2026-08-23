@@ -141,6 +141,7 @@
       <button @click="goBack" class="error-back-btn">返回工具箱</button>
     </div>
   </div>
+  <SiteFooter />
 </template>
 
 <script setup lang="ts">
@@ -149,6 +150,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { gsap } from 'gsap'
 import Titlebar from '@/components/layout/Titlebar.vue'
 import BlogBackground from '@/components/modules/BlogBackground.vue'
+import SiteFooter from '@/components/layout/SiteFooter.vue'
 import { dbService } from '@/services/supabaseService'
 
 // 工具类型

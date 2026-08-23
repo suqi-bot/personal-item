@@ -36,6 +36,7 @@
         />
       </div>
     </div>
+    <SiteFooter />
   </div>
 </template>
 
@@ -44,6 +45,7 @@ import { ref, computed, nextTick, onMounted } from 'vue'
 import { gsap } from 'gsap'
 import Titlebar from '@/components/layout/Titlebar.vue'
 import BlogBackground from '@/components/modules/BlogBackground.vue'
+import SiteFooter from '@/components/layout/SiteFooter.vue'
 import SearchBar from '@/components/blog/SearchBar.vue'
 import BlogContent from '@/components/blog/BlogContent.vue'
 import PersonalInfo from '@/components/blog/PersonalInfo.vue'
@@ -268,6 +270,18 @@ const handleMonthFilter = (month: string) => {
 @keyframes skeleton-shimmer {
   0% { background-position: 100% 50%; }
   100% { background-position: 0 50%; }
+}
+
+@media (max-width: 1200px) {
+  .blog-main {
+    flex-direction: column;
+    padding-left: 24px;
+  }
+
+  /* 窄屏/平板不再显示右侧个人信息栏，内容占满整行 */
+  .sidebar {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {

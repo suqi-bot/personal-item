@@ -26,6 +26,13 @@
           />
         </div>
       </template>
+
+      <!-- 底部备案信息 -->
+      <template #footer>
+        <footer class="filing-footer">
+          <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2026067784号‑1</a>
+        </footer>
+      </template>
     </LayoutModule>
   </div>
 </template>
@@ -53,7 +60,7 @@ const backgroundConfig = ref({
 const layoutConfig = ref({
   showHeader: true,
   showSidebar: false,
-  showFooter: false,
+  showFooter: true,
   headerHeight: '60px'
 })
 
@@ -182,7 +189,7 @@ onMounted(async () => {
 
 .content-container {
   width: 100%;
-  height: calc(100vh - 60px);
+  height: 100%;
   position: relative;
   overflow: hidden;
   z-index: 1;
@@ -192,7 +199,7 @@ onMounted(async () => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .content-container {
-    height: calc(100vh - 60px);
+    height: 100%;
   }
 
   .content-container {
@@ -202,7 +209,7 @@ onMounted(async () => {
 
 @media (max-width: 480px) {
   .content-container {
-    height: calc(100vh - 60px);
+    height: 100%;
     padding: 0 12px;
   }
 }
@@ -219,5 +226,24 @@ onMounted(async () => {
 
 .layout-module {
   z-index: 1;
+}
+
+/* 底部备案信息 */
+.filing-footer {
+  text-align: center;
+  padding: 10px 0;
+  font-size: 13px;
+  color: #666;
+  background: rgba(245, 245, 245, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.filing-footer a {
+  color: #666;
+  text-decoration: none;
+}
+
+.filing-footer a:hover {
+  color: #333;
 }
 </style>

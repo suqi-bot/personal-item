@@ -19,7 +19,7 @@ import { gsap } from 'gsap';
 // 导航项
 const navItems = [
     { path: '/', label: '首页' },
-    { path: '/blog', label: '博客' },
+    { path: '/blog', label: '小站' },
     { path: '/games', label: '游戏' },
     { path: '/tools', label: '工具' },
     { path: '/about', label: '关于' }
