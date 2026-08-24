@@ -31,6 +31,16 @@
       <template #footer>
         <footer class="filing-footer">
           <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">浙ICP备2026067784号‑1</a>
+          <span class="filing-sep">|</span>
+          <a
+            href="https://beian.mps.gov.cn/#/query/webSearch?code=33011002020403"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="filing-beian"
+          >
+            <img src="@/assets/beian.png" alt="公安备案" class="beian-icon" />
+            <span>浙公网安备33011002020403号</span>
+          </a>
         </footer>
       </template>
     </LayoutModule>
@@ -239,11 +249,33 @@ onMounted(async () => {
 }
 
 .filing-footer a {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
   color: #666;
   text-decoration: none;
 }
 
 .filing-footer a:hover {
   color: #333;
+}
+
+.filing-sep {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 8px;
+  color: #ccc;
+}
+
+.filing-beian {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.filing-beian .beian-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
 }
 </style>

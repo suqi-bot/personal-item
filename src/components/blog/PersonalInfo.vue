@@ -123,9 +123,9 @@ const articlesList = computed(() => props.articles ?? fetchedArticles.value)
 const githubAvatarUrl = 'https://github.com/suqi-bot.png'
 
 const profileData = ref({
-  name: 'SuQi',
-  title: '全栈开发工程师',
-  bio: '专注后端与前端技术分享，热爱编程与游戏开发。',
+  name: '苏柒',
+  title: 'Unity开发工程师',
+  bio: '热爱编程与游戏开发',
   avatar: gitIcon,
   socialLinks: [
     { name: 'github', url: 'https://github.com/suqi-bot' },
