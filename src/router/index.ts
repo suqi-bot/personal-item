@@ -46,6 +46,11 @@ const router = createRouter({
       path: '/tools/:id',
       name: 'tool-detail',
       component: () => import('../views/ToolDetailView.vue'),
+    },
+    {
+      path: '/rainy-store',
+      name: 'rainy-store',
+      component: () => import('../views/RainyStoreView.vue'),
     }
   ],
 })

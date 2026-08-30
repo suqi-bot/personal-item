@@ -1,17 +1,15 @@
 <template>
   <section class="hero-section" ref="heroRef">
-    <div class="split">
+    <div class="split" data-text="欢迎来到">
       欢迎来到
     </div>
 
     <div class="nav-box" ref="navBoxRef">
       <div class="nav-box-background"></div>
-      <div class="text">
-        welcome to my site
-      </div>
+      <div class="text">welcome to my site</div>
     </div>
 
-      <div class="split">
+      <div class="split" data-text="苏柒的小站">
        苏柒的小站
       </div>
   </section>
@@ -55,19 +53,30 @@ const emit = defineEmits<{
 // 鼠标倾斜参数
 let tiltAnimationFrame: number | null = null
 
-// 立体阴影方向状态（随鼠标倾斜响应）
-const depthState = { x: 0, y: 1 }
-let depthTween: gsap.core.Tween | null = null
+// 描边辉光偏移状态（随鼠标倾斜响应）
+const glowState = { x: 0, y: 0 }
+let glowTween: gsap.core.Tween | null = null
 
-function applyDepth() {
+function applyGlow() {
   document.querySelectorAll('.split').forEach((el) => {
     const element = el as HTMLElement
-    element.style.setProperty('--depth-x', String(depthState.x))
-    element.style.setProperty('--depth-y', String(depthState.y))
+    element.style.setProperty('--gx', String(glowState.x))
+    element.style.setProperty('--gy', String(glowState.y))
   })
 }
 
-// 根据鼠标位置计算文字俯仰倾斜 + 立体阴影方向（以文字区域中心为原点）
+// 把鼠标位置换算成每个标题元素内部的百分比，驱动 ::after 点亮层
+function updateReveal(event: MouseEvent) {
+  document.querySelectorAll('.split').forEach((el) => {
+    const element = el as HTMLElement
+    const rect = element.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) return
+    element.style.setProperty('--mx', `${((event.clientX - rect.left) / rect.width) * 100}%`)
+    element.style.setProperty('--my', `${((event.clientY - rect.top) / rect.height) * 100}%`)
+  })
+}
+
+// 根据鼠标位置计算文字俯仰倾斜 + 描边辉光方向（以文字区域中心为原点）
 function handleMouseMove(event: MouseEvent) {
   // 移动端不响应鼠标移动，文字固定在正中间
   if (window.innerWidth <= 768) return
@@ -80,24 +89,26 @@ function handleMouseMove(event: MouseEvent) {
   const nx = Math.max(-1, Math.min(1, (event.clientX - centerX) / (rect.width / 2)))
   const ny = Math.max(-1, Math.min(1, (event.clientY - centerY) / (rect.height / 2)))
 
+  updateReveal(event)
+
   if (tiltAnimationFrame !== null) return
   tiltAnimationFrame = requestAnimationFrame(() => {
     tiltAnimationFrame = null
     gsap.to('.hero-section', {
-      rotateX: ny * 3,
-      rotateY: nx * 3,
+      rotateX: ny * 2.5,
+      rotateY: nx * 2.5,
       transformPerspective: 900,
       duration: 0.6,
       ease: 'power2.out'
     })
 
-    if (depthTween) depthTween.kill()
-    depthTween = gsap.to(depthState, {
-      x: Math.max(-1, Math.min(1, -nx * 1.6)),
-      y: Math.max(0.4, Math.min(1.6, 1 + ny * 1.2)),
+    if (glowTween) glowTween.kill()
+    glowTween = gsap.to(glowState, {
+      x: -nx * 3,
+      y: ny * 3 + 2,
       duration: 0.6,
       ease: 'power2.out',
-      onUpdate: applyDepth
+      onUpdate: applyGlow
     })
   })
 }
@@ -112,14 +123,18 @@ function handleMouseLeave() {
     ease: 'elastic.out(1, 0.4)'
   })
 
-  if (depthTween) depthTween.kill()
-  depthTween = gsap.to(depthState, {
+  if (glowTween) glowTween.kill()
+  glowTween = gsap.to(glowState, {
     x: 0,
-    y: 1,
+    y: 2,
     duration: 0.8,
     ease: 'power2.out',
-    onUpdate: applyDepth
+    onUpdate: applyGlow
   })
+}
+
+function revealElement(element: Element) {
+  element.classList.add('is-revealed')
 }
 
 // 文字动画1 - 分行动画
@@ -139,24 +154,27 @@ function createTextAnimation1() {
 
       if (split.lines && split.lines.length > 0) {
         gsap.set(split.lines, {
-          rotationX: -100,
-          transformOrigin: '50% 50% -160px',
-          opacity: 0
+          yPercent: 115,
+          opacity: 0,
+          filter: 'blur(14px)'
         })
 
         gsap.to(split.lines, {
-          rotationX: 0,
+          yPercent: 0,
           opacity: 1,
-          duration: 1,
+          filter: 'blur(0px)',
+          duration: 1.1,
           ease: 'power3.out',
-          stagger: props.animationConfig.staggerDelay
+          stagger: props.animationConfig.staggerDelay,
+          onComplete: () => revealElement(element)
         })
       } else {
         gsap.to(element, {
           y: 0,
           opacity: 1,
           duration: 0.8,
-          ease: 'power3.out'
+          ease: 'power3.out',
+          onComplete: () => revealElement(element)
         })
       }
     } catch (error) {
@@ -165,7 +183,8 @@ function createTextAnimation1() {
         y: 0,
         opacity: 1,
         duration: 0.8,
-        ease: 'power3.out'
+        ease: 'power3.out',
+        onComplete: () => revealElement(element)
       })
     }
   })
@@ -190,14 +209,21 @@ function createTextAnimation2() {
         opacity: 1,
         duration: 1,
         ease: 'power2.out',
-        stagger: 0.05
+        stagger: 0.05,
+        onComplete: () => (textElement as HTMLElement).classList.add('caret-on')
       })
     } else {
-      gsap.to(textElement, { opacity: 1, duration: 0.6, ease: 'power2.out' })
+      gsap.to(textElement, {
+        opacity: 1,
+        duration: 0.6,
+        ease: 'power2.out',
+        onComplete: () => (textElement as HTMLElement).classList.add('caret-on')
+      })
     }
   } catch (error) {
     console.error('文字动画2 错误:', error)
     gsap.to(textElement, { opacity: 1, duration: 0.6, ease: 'power2.out' })
+    ;(textElement as HTMLElement).classList.add('caret-on')
   }
 }
 
@@ -232,13 +258,9 @@ function createAnimationTimeline() {
 
 // 暴露动画控制方法
 const playAnimation = async () => {
-  if (isAnimationPlaying.value) {
-    console.log('Hero动画已在播放，跳过重复调用')
-    return
-  }
+  if (isAnimationPlaying.value) return
 
   isAnimationPlaying.value = true
-  console.log('开始执行Hero动画')
 
   await nextTick()
 
@@ -246,7 +268,6 @@ const playAnimation = async () => {
 
   timeline.eventCallback('onComplete', () => {
     isAnimationPlaying.value = false
-    console.log('Hero动画播放完成')
   })
 
   return timeline
@@ -262,6 +283,7 @@ const resetAnimation = () => {
 
     const splitElements = document.querySelectorAll('.split')
     splitElements.forEach((element) => {
+      element.classList.remove('is-revealed')
       if (element.hasAttribute('data-split-type')) {
         const originalText = element.textContent
         element.innerHTML = originalText || ''
@@ -269,9 +291,12 @@ const resetAnimation = () => {
     })
 
     const textElement = document.querySelector('.nav-box .text')
-    if (textElement && textElement.hasAttribute('data-split-type')) {
-      const originalText = textElement.textContent
-      textElement.innerHTML = originalText || ''
+    if (textElement) {
+      textElement.classList.remove('caret-on')
+      if (textElement.hasAttribute('data-split-type')) {
+        const originalText = textElement.textContent
+        textElement.innerHTML = originalText || ''
+      }
     }
 
     console.log('动画重置完成')
@@ -315,31 +340,50 @@ onBeforeUnmount(() => {
 }
 
 .split {
+  position: relative;
   overflow: hidden;
   font-size: clamp(2rem, 8vw, 12rem);
   text-align: center;
-  perspective: 500px;
-  color: #121212;
+  letter-spacing: 0.08em;
+  color: transparent;
   opacity: 0; /* 初始隐藏 */
-  transform-style: preserve-3d;
-  /* 立体文字阴影（厚度方向随鼠标倾斜响应） */
-  text-shadow:
-    calc(var(--depth-x, 0) * 1px) calc(var(--depth-y, 1) * 1px) 0 #8a8a8a,
-    calc(var(--depth-x, 0) * 2px) calc(var(--depth-y, 1) * 2px) 0 #7d7d7d,
-    calc(var(--depth-x, 0) * 3px) calc(var(--depth-y, 1) * 3px) 0 #707070,
-    calc(var(--depth-x, 0) * 4px) calc(var(--depth-y, 1) * 4px) 0 #636363,
-    calc(var(--depth-x, 0) * 5px) calc(var(--depth-y, 1) * 5px) 0 #565656,
-    calc(var(--depth-x, 0) * 6px) calc(var(--depth-y, 1) * 6px) 0 #494949,
-    calc(var(--depth-x, 0) * 7px) calc(var(--depth-y, 1) * 7px) 0 #3c3c3c,
-    calc(var(--depth-x, 0) * 8px) calc(var(--depth-y, 1) * 8px) 0 #2f2f2f,
-    0 10px 16px rgba(0, 0, 0, 0.4);
+  /* 线框描边字，呼应背景多面体线框 */
+  -webkit-text-stroke: 1.6px rgba(31, 41, 55, 0.72);
+  /* 描边随鼠标方向产生极淡的投影，替代原先的实心挤出 */
+  filter: drop-shadow(calc(var(--gx, 0) * 1px) calc(var(--gy, 2) * 1px) 10px rgba(17, 24, 39, 0.22));
+}
+
+/* 鼠标处的渐变点亮层：入场完成后才淡入，否则会在真字滑入时留下残影 */
+.split::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: transparent;
+  -webkit-text-stroke: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  background: radial-gradient(
+    circle 220px at var(--mx, 50%) var(--my, 50%),
+    rgba(17, 24, 39, 0.95) 0%,
+    rgba(55, 65, 81, 0.5) 42%,
+    rgba(156, 163, 175, 0) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  pointer-events: none;
+}
+
+.split.is-revealed::after {
+  opacity: 1;
 }
 
 .nav-box {
   position: absolute;
   width: 330px;
   height: 35px;
-  color: white;
   display: flex;
   align-items: center;
   opacity: 0; /* 初始隐藏 */
@@ -347,21 +391,54 @@ onBeforeUnmount(() => {
 }
 
 .nav-box-background {
-  background-color: #121212;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(17, 24, 39, 0.28);
   width: 100%;
   height: 100%;
   position: absolute;
   z-index: 1;
+  backdrop-filter: blur(6px);
 }
 
 .nav-box .text {
-  margin-left: 5px;
+  margin-left: 14px;
   overflow: hidden;
   z-index: 2;
   opacity: 0; /* 初始隐藏 */
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 14px;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: #374151;
+}
+
+/* 文字末尾的输入光标 */
+.nav-box .text::after {
+  content: '';
+  display: inline-block;
+  width: 1.5px;
+  height: 1.2em;
+  margin-left: -0.3em;
+  vertical-align: text-bottom;
+  background: currentColor;
+  opacity: 0;
+}
+
+.nav-box .text.caret-on::after {
+  animation: caret-blink 1.05s steps(1, end) infinite;
+}
+
+@keyframes caret-blink {
+  0%, 49.9% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* 减弱动画偏好下光标常亮，不做闪烁 */
+@media (prefers-reduced-motion: reduce) {
+  .nav-box .text.caret-on::after {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 /* 移动端适配 */
@@ -372,8 +449,14 @@ onBeforeUnmount(() => {
 
   .split {
     font-size: 2.2rem;
-    /* 移动端去掉伪3D立体阴影 */
-    text-shadow: none;
+    letter-spacing: 0.12em;
+    -webkit-text-stroke-width: 1px;
+    filter: none;
+  }
+
+  /* 无鼠标交互，点亮层隐藏 */
+  .split::after {
+    display: none;
   }
 
   .nav-box {

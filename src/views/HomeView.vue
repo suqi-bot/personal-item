@@ -21,8 +21,6 @@
           <HeroSection
             ref="heroSectionRef"
             :animation-config="heroAnimationConfig"
-            @animation-start="onHeroAnimationStart"
-            @animation-complete="onHeroAnimationComplete"
           />
         </div>
       </template>
@@ -48,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, nextTick } from 'vue'
 import gsap from 'gsap'
 import BlogBackground from '@/components/modules/BlogBackground.vue'
 import BackgroundModule from '@/components/modules/BackgroundModule.vue'
@@ -83,8 +81,7 @@ const heroAnimationConfig = ref({
 // 模块状态
 const moduleStates = ref({
   backgroundReady: false,
-  layoutReady: false,
-  heroReady: false
+  layoutReady: false
 })
 
 // 动画状态跟踪
@@ -94,7 +91,6 @@ const animationStates = ref({
 
 // 事件处理函数
 const onBackgroundReady = () => {
-  console.log('背景模块准备就绪')
   moduleStates.value.backgroundReady = true
   checkAllModulesReady()
 }
@@ -104,77 +100,41 @@ const onBackgroundError = (error: Error) => {
 }
 
 const onLayoutReady = () => {
-  console.log('布局模块准备就绪')
   moduleStates.value.layoutReady = true
   checkAllModulesReady()
 }
 
-const onHeroAnimationStart = () => {
-  console.log('Hero动画开始')
-}
-
-const onHeroAnimationComplete = () => {
-  console.log('Hero动画完成')
-  moduleStates.value.heroReady = true
-}
-
-// 检查所有模块是否准备就绪
+// 背景与布局就绪后才入场，避免 3D 场景未初始化就播放动画
 const checkAllModulesReady = () => {
   const { backgroundReady, layoutReady } = moduleStates.value
-  console.log('模块状态检查:', { backgroundReady, layoutReady })
-  if (backgroundReady && layoutReady && !animationStates.value.pageAnimationStarted) {
-    console.log('所有模块准备就绪，启动动画')
-    startPageAnimation()
-  }
+  if (backgroundReady && layoutReady) startPageAnimation()
 }
 
-// 启动页面动画
 const startPageAnimation = async () => {
-  if (animationStates.value.pageAnimationStarted) {
-    console.log('页面动画已经启动，跳过重复调用')
-    return
-  }
-
+  if (animationStates.value.pageAnimationStarted) return
   animationStates.value.pageAnimationStarted = true
-  console.log('启动页面动画')
+
   await nextTick()
 
-  // 创建主时间线
-  const mainTimeline = gsap.timeline()
-
-  // 背景模块入场动画
-  mainTimeline.from('.home-container', {
-    opacity: 0,
-    duration: 0.5
-  })
-
-  // 启动Hero部分动画
-  if (heroSectionRef.value) {
-    console.log('准备启动Hero动画')
-    mainTimeline.call(() => {
-      console.log('调用Hero动画')
+  gsap.timeline()
+    .from('.home-container', {
+      opacity: 0,
+      duration: 0.4,
+      ease: 'power1.out'
+    })
+    // 背景空间凝聚成形：淡入同时轻微回缩，不做位移
+    .from('.background-module', {
+      opacity: 0,
+      scale: 1.06,
+      duration: 1.3,
+      ease: 'power2.out',
+      clearProps: 'transform'
+    }, '-=0.15')
+    // 标题在空间基本成形后凝出
+    .call(() => {
       heroSectionRef.value?.playAnimation()
-    }, [], "+=0.3")
-  } else {
-    console.log('heroSectionRef为空')
-  }
-
-  // 3D模型入场动画
-  mainTimeline.from('.background-module', {
-    opacity: 0,
-    duration: 1,
-    y: window.innerHeight,
-  }, "+=1")
-
-  
-  
+    }, [], '-=0.8')
 }
-
-onMounted(async () => {
-  await nextTick()
-  console.log('HomeView mounted')
-  // 等待所有模块准备就绪后再启动动画
-})
 </script>
 
 <style scoped>
